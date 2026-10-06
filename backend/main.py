@@ -73,7 +73,8 @@ def get_system_status(db: Session = Depends(get_db)):
         "is_neon": info["is_neon"],
         "database_type": info["database_type"],
         "url_configured": info["url_configured"],
-        "total_posts": count
+        "total_posts": count,
+        "error": info.get("error")
     }
 
 @app.get("/api/categories")

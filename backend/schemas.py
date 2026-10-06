@@ -43,6 +43,7 @@ class DatabaseStatus(BaseModel):
     database_type: str
     url_configured: bool
     total_posts: int
+    error: Optional[str] = None
 
 class UploadResponse(BaseModel):
     url: str
