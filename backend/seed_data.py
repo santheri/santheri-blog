@@ -154,3 +154,36 @@ def seed_default_posts(db: Session):
             db.add(post)
         db.commit()
         print("Default posts seeded successfully.")
+
+SAMPLE_NOTES = [
+    {
+        "title": "The illusion of immediate comprehension",
+        "thought": "Reading about an architecture pattern gives you the feeling of knowing it. Building it and watching edge cases break at 2 AM is when you actually understand it."
+    },
+    {
+        "title": "Why agents need constrained memory, not infinite context",
+        "thought": "Expanding the context window is like giving someone a bigger desk. It helps, but if their filing system is broken, more space just means more clutter."
+    },
+    {
+        "title": "Field note: Telangana backroads",
+        "thought": "The moment you lose 5G signal on country roads, your attention shifts outward. The trees look sharper, the air smells like damp soil, and you realize how much background mental bandwidth connectivity consumes."
+    },
+    {
+        "title": "On building software with taste",
+        "thought": "Speed and features are cheap. Restraint, clarity, and thoughtful typography are expensive because they require deliberate decisions about what NOT to build."
+    }
+]
+
+def seed_default_notes(db: Session):
+    existing_count = db.query(models.Note).count()
+    if existing_count == 0:
+        print("Notes table is empty. Seeding default field notes...")
+        for item in SAMPLE_NOTES:
+            note = models.Note(
+                title=item["title"],
+                thought=item["thought"]
+            )
+            db.add(note)
+        db.commit()
+        print("Default notes seeded successfully.")
+

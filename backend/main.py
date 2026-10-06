@@ -15,7 +15,8 @@ from database import engine, Base, get_db, get_database_info
 import models
 import schemas
 import email_service
-from seed_data import seed_default_posts, slugify
+from config import settings
+from seed_data import seed_default_posts, seed_default_notes, slugify
 
 # Ensure database tables exist in Neon / DB
 Base.metadata.create_all(bind=engine)
@@ -26,10 +27,11 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Seed initial posts if DB is newly created
+    # Startup: Seed initial posts and notes if DB is newly created
     db = next(get_db())
     try:
         seed_default_posts(db)
+        seed_default_notes(db)
     finally:
         db.close()
     yield
@@ -375,5 +377,66 @@ async def upload_file(file: UploadFile = File(...)):
     file_url = f"/uploads/{unique_filename}"
     return {"url": file_url, "filename": unique_filename}
 
+# ==============================================================================
+# FIELD NOTES ENDPOINTS
+# ==============================================================================
+
+@app.get("/api/notes", response_model=List[schemas.NoteResponse])
+def get_notes(db: Session = Depends(get_db)):
+    notes = db.query(models.Note).order_by(desc(models.Note.created_at)).all()
+    return notes
+
+@app.post("/api/notes", response_model=schemas.NoteResponse, status_code=status.HTTP_201_CREATED)
+def create_note(note_in: schemas.NoteCreate, db: Session = Depends(get_db)):
+    db_note = models.Note(
+        title=note_in.title.strip(),
+        thought=note_in.thought.strip()
+    )
+    db.add(db_note)
+    db.commit()
+    db.refresh(db_note)
+    return db_note
+
+@app.put("/api/notes/{note_id}", response_model=schemas.NoteResponse)
+def update_note(note_id: int, note_update: schemas.NoteUpdate, db: Session = Depends(get_db)):
+    db_note = db.query(models.Note).filter(models.Note.id == note_id).first()
+    if not db_note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    if note_update.title is not None:
+        db_note.title = note_update.title.strip()
+    if note_update.thought is not None:
+        db_note.thought = note_update.thought.strip()
+    db.commit()
+    db.refresh(db_note)
+    return db_note
+
+@app.delete("/api/notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_note(note_id: int, db: Session = Depends(get_db)):
+    db_note = db.query(models.Note).filter(models.Note.id == note_id).first()
+    if not db_note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    db.delete(db_note)
+    db.commit()
+    return None
+
+# ==============================================================================
+# ADMIN AUTHENTICATION VERIFY ENDPOINT
+# ==============================================================================
+
+@app.post("/api/admin/verify", response_model=schemas.AdminVerifyResponse)
+def verify_admin_password(payload: schemas.AdminVerifyRequest):
+    expected_password = settings.admin_password.strip()
+    if not payload.password or payload.password.strip() != expected_password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect admin passcode. Access denied."
+        )
+    return {
+        "success": True,
+        "message": "Admin authenticated successfully."
+    }
+
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    host = "0.0.0.0" if (settings.render or os.environ.get("PORT")) else "127.0.0.1"
+    uvicorn.run("main:app", host=host, port=settings.port, reload=False if os.environ.get("PORT") else True)
+

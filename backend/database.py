@@ -1,12 +1,8 @@
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
-from dotenv import load_dotenv
+from config import settings
 
-# Load environment variables from .env if present
-load_dotenv()
-
-DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("NEON_DATABASE_URL")
+DATABASE_URL = settings.database_url
 
 # If Neon URL is provided, format it properly for SQLAlchemy psycopg2
 is_neon = False
@@ -52,5 +48,6 @@ def get_database_info():
     return {
         "is_neon": is_neon and "neon.tech" in DATABASE_URL,
         "database_type": "Neon PostgreSQL" if (is_neon and "neon.tech" in DATABASE_URL) else ("PostgreSQL" if DATABASE_URL.startswith("postgresql") else "SQLite (Local)"),
-        "url_configured": bool(os.getenv("DATABASE_URL") or os.getenv("NEON_DATABASE_URL")),
+        "url_configured": bool(settings.database_url),
     }
+

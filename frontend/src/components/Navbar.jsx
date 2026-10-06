@@ -13,6 +13,23 @@ export default function Navbar() {
   const searchParams = new URLSearchParams(location.search);
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
 
+  // Admin authentication state (hidden from visitors)
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
+    return localStorage.getItem('santheri_admin_auth') === 'true';
+  });
+
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setIsAdminLoggedIn(localStorage.getItem('santheri_admin_auth') === 'true');
+    };
+    window.addEventListener('santheri-admin-auth-changed', handleAuthChange);
+    window.addEventListener('storage', handleAuthChange);
+    return () => {
+      window.removeEventListener('santheri-admin-auth-changed', handleAuthChange);
+      window.removeEventListener('storage', handleAuthChange);
+    };
+  }, []);
+
   // Synchronize search input with URL search param
   useEffect(() => {
     setSearchTerm(searchParams.get('search') || '');
@@ -156,15 +173,17 @@ export default function Navbar() {
             About
           </Link>
 
-          <Link 
-            to="/admin" 
-            className={`admin-nav-pill ${isAdminActive ? 'active' : ''}`}
-            id="nav-admin-link"
-            title="Upload new blog content and manage posts"
-          >
-            <PenTool size={13} />
-            <span>Admin</span>
-          </Link>
+          {isAdminLoggedIn && (
+            <Link 
+              to="/admin" 
+              className={`admin-nav-pill ${isAdminActive ? 'active' : ''}`}
+              id="nav-admin-link"
+              title="Admin Dashboard (Active)"
+            >
+              <PenTool size={13} />
+              <span>Admin</span>
+            </Link>
+          )}
 
           {/* Right side search bar with search icon */}
           <div className="navbar-search-wrapper" id="navbar-search-wrapper">
@@ -366,17 +385,19 @@ export default function Navbar() {
                 About
               </Link>
 
-              <div className="mobile-nav-footer">
-                <Link 
-                  to="/admin" 
-                  className={`admin-nav-pill ${isAdminActive ? 'active' : ''}`}
-                  id="mobile-nav-admin"
-                  style={{ width: '100%', justifyContent: 'center', padding: '10px 16px' }}
-                >
-                  <PenTool size={14} />
-                  <span>Admin Portal</span>
-                </Link>
-              </div>
+              {isAdminLoggedIn && (
+                <div className="mobile-nav-footer">
+                  <Link 
+                    to="/admin" 
+                    className={`admin-nav-pill ${isAdminActive ? 'active' : ''}`}
+                    id="mobile-nav-admin"
+                    style={{ width: '100%', justifyContent: 'center', padding: '10px 16px' }}
+                  >
+                    <PenTool size={14} />
+                    <span>Admin Portal</span>
+                  </Link>
+                </div>
+              )}
             </nav>
           </aside>
         </>

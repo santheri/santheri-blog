@@ -133,4 +133,70 @@ export async function sendTestEmail(email) {
   return data;
 }
 
+// ==============================================================================
+// FIELD NOTES API
+// ==============================================================================
+
+export async function fetchNotes() {
+  const res = await fetch(`${API_BASE}/notes`);
+  if (!res.ok) {
+    throw new Error('Failed to fetch notes');
+  }
+  return res.json();
+}
+
+export async function createNote(noteData) {
+  const res = await fetch(`${API_BASE}/notes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(noteData),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.detail || 'Failed to create note');
+  }
+  return data;
+}
+
+export async function updateNote(noteId, noteData) {
+  const res = await fetch(`${API_BASE}/notes/${noteId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(noteData),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.detail || 'Failed to update note');
+  }
+  return data;
+}
+
+export async function deleteNote(noteId) {
+  const res = await fetch(`${API_BASE}/notes/${noteId}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    throw new Error('Failed to delete note');
+  }
+  return true;
+}
+
+// ==============================================================================
+// ADMIN AUTHENTICATION
+// ==============================================================================
+
+export async function verifyAdminPassword(password) {
+  const res = await fetch(`${API_BASE}/admin/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.detail || 'Incorrect admin passcode');
+  }
+  return data;
+}
+
+
 

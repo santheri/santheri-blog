@@ -7,42 +7,23 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 from email.utils import formatdate, make_msgid, formataddr
 from typing import List, Dict, Any, Optional
-from dotenv import load_dotenv
+from config import get_settings, settings
 import markdown
 
 logger = logging.getLogger("email_service")
 logger.setLevel(logging.INFO)
 
 def get_email_config() -> Dict[str, Any]:
-    # Ensure latest .env values are reloaded dynamically
-    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
-    if os.path.exists(env_path):
-        load_dotenv(dotenv_path=env_path, override=True)
-
-    host = os.getenv("SMTP_HOST", "").strip()
-    port_str = os.getenv("SMTP_PORT", "587").strip()
-    user = os.getenv("SMTP_USER", "").strip()
-    password = os.getenv("SMTP_PASSWORD", "").strip()
-    from_email = os.getenv("FROM_EMAIL", "").strip() or user or "newsletter@santheriblog.com"
-    from_name = os.getenv("FROM_NAME", "Santheri").strip()
-    base_url = os.getenv("BLOG_BASE_URL", "http://localhost:5173").rstrip("/")
-
-    try:
-        port = int(port_str)
-    except ValueError:
-        port = 587
-
-    configured = bool(host and user and password)
-
+    cfg = get_settings()
     return {
-        "host": host,
-        "port": port,
-        "user": user,
-        "password": password,
-        "from_email": from_email,
-        "from_name": from_name,
-        "base_url": base_url,
-        "configured": configured
+        "host": cfg.smtp_host,
+        "port": cfg.smtp_port,
+        "user": cfg.smtp_user,
+        "password": cfg.smtp_password,
+        "from_email": cfg.sender_email,
+        "from_name": cfg.from_name,
+        "base_url": cfg.blog_base_url.rstrip("/"),
+        "configured": cfg.is_smtp_configured
     }
 
 def send_email(

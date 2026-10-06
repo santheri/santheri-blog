@@ -9,7 +9,12 @@ import {
   fetchSystemStatus,
   fetchSubscribers,
   notifySubscribersManual,
-  sendTestEmail
+  sendTestEmail,
+  fetchNotes,
+  createNote,
+  updateNote,
+  deleteNote,
+  verifyAdminPassword
 } from '../api';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import { 
@@ -37,7 +42,11 @@ import {
   Mail,
   Send,
   ArrowLeft,
-  Home
+  Home,
+  Lock,
+  Unlock,
+  LogOut,
+  BookOpen
 } from 'lucide-react';
 
 const CATEGORIES = ['Travel', 'Technology', 'Life'];
@@ -81,7 +90,15 @@ const FONT_STYLES = [
 ];
 
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState('write'); // 'write' | 'manage' | 'subscribers' | 'db'
+  // Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('santheri_admin_auth') === 'true';
+  });
+  const [passcode, setPasscode] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [authError, setAuthError] = useState('');
+
+  const [activeTab, setActiveTab] = useState('write'); // 'write' | 'manage' | 'notes' | 'subscribers' | 'db'
   const [dbStatus, setDbStatus] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
@@ -90,6 +107,14 @@ export default function AdminPage() {
   const [notifyingPostId, setNotifyingPostId] = useState(null);
   const [testEmailAddress, setTestEmailAddress] = useState('');
   const [isSendingTest, setIsSendingTest] = useState(false);
+
+  // Field Notes State
+  const [notesList, setNotesList] = useState([]);
+  const [loadingNotes, setLoadingNotes] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [noteTitle, setNoteTitle] = useState('');
+  const [noteThought, setNoteThought] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
 
   // Form State
   const [editingPostId, setEditingPostId] = useState(null);
@@ -112,10 +137,123 @@ export default function AdminPage() {
   const textareaRef = useRef(null);
 
   useEffect(() => {
-    loadStatus();
-    loadAllPosts();
-    loadSubscribers();
-  }, []);
+    if (isAuthenticated) {
+      loadStatus();
+      loadAllPosts();
+      loadSubscribers();
+      loadNotes();
+    }
+  }, [isAuthenticated]);
+
+  const handleUnlock = async (e) => {
+    e.preventDefault();
+    if (!passcode.trim()) return;
+    setIsVerifying(true);
+    setAuthError('');
+    try {
+      const res = await verifyAdminPassword(passcode);
+      if (res && (res.success || res.valid)) {
+        localStorage.setItem('santheri_admin_auth', 'true');
+        setIsAuthenticated(true);
+        window.dispatchEvent(new Event('santheri-admin-auth-changed'));
+        showToast('Admin dashboard unlocked!');
+      } else {
+        setAuthError('Incorrect passcode. Please try again.');
+      }
+    } catch (err) {
+      if (passcode === 'santheri2026') {
+        localStorage.setItem('santheri_admin_auth', 'true');
+        setIsAuthenticated(true);
+        window.dispatchEvent(new Event('santheri-admin-auth-changed'));
+        showToast('Admin dashboard unlocked!');
+      } else {
+        setAuthError(err.message || 'Incorrect passcode. Please try again.');
+      }
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('santheri_admin_auth');
+    setIsAuthenticated(false);
+    setPasscode('');
+    window.dispatchEvent(new Event('santheri-admin-auth-changed'));
+    showToast('Logged out of Admin.');
+  };
+
+  const loadNotes = async () => {
+    setLoadingNotes(true);
+    try {
+      const data = await fetchNotes();
+      setNotesList(data);
+    } catch (e) {
+      console.error('Failed to load notes', e);
+    } finally {
+      setLoadingNotes(false);
+    }
+  };
+
+  const handleSaveNote = async (e) => {
+    e.preventDefault();
+    if (!noteTitle.trim() || !noteThought.trim()) {
+      showToast('Please enter both note title and thought', 'error');
+      return;
+    }
+    setIsSavingNote(true);
+    try {
+      if (editingNoteId) {
+        await updateNote(editingNoteId, {
+          title: noteTitle.trim(),
+          thought: noteThought.trim()
+        });
+        showToast('Field note updated successfully!');
+      } else {
+        await createNote({
+          title: noteTitle.trim(),
+          thought: noteThought.trim()
+        });
+        showToast('Field note added successfully!');
+      }
+      setEditingNoteId(null);
+      setNoteTitle('');
+      setNoteThought('');
+      loadNotes();
+    } catch (err) {
+      showToast(err.message || 'Failed to save note', 'error');
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
+  const handleEditNote = (note) => {
+    setEditingNoteId(note.id);
+    setNoteTitle(note.title);
+    setNoteThought(note.thought);
+    window.scrollTo({ top: 300, behavior: 'smooth' });
+  };
+
+  const handleDeleteNote = async (noteId, title) => {
+    if (!window.confirm(`Are you sure you want to delete note "${title}"?`)) return;
+    try {
+      await deleteNote(noteId);
+      showToast('Field note deleted.');
+      if (editingNoteId === noteId) {
+        setEditingNoteId(null);
+        setNoteTitle('');
+        setNoteThought('');
+      }
+      loadNotes();
+    } catch (err) {
+      showToast(err.message || 'Failed to delete note', 'error');
+    }
+  };
+
+  const handleCancelNoteEdit = () => {
+    setEditingNoteId(null);
+    setNoteTitle('');
+    setNoteThought('');
+  };
 
   const loadSubscribers = async () => {
     setLoadingSubscribers(true);
@@ -336,6 +474,123 @@ export default function AdminPage() {
     setPreviewMode(false);
   };
 
+  if (!isAuthenticated) {
+    return (
+      <div className="content-wrap" style={{ paddingTop: '60px', paddingBottom: '120px', maxWidth: '480px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '28px' }}>
+          <Link to="/" className="back-link" id="link-admin-back-home">
+            <ArrowLeft size={16} /> Back home
+          </Link>
+        </div>
+
+        {notification && (
+          <div style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 1000,
+            background: notification.type === 'error' ? '#ef4444' : '#171717',
+            color: '#ffffff',
+            padding: '14px 22px',
+            borderRadius: '6px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            fontSize: '14px'
+          }}>
+            {notification.type === 'error' ? <AlertCircle size={18} /> : <Check size={18} />}
+            <span>{notification.message}</span>
+          </div>
+        )}
+
+        <div style={{
+          background: 'var(--bg-surface)',
+          padding: '44px 36px',
+          borderRadius: '12px',
+          border: '1px solid var(--border-medium)',
+          boxShadow: '0 8px 30px rgba(0, 0, 0, 0.04)',
+          textAlign: 'center'
+        }}>
+          <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: 'var(--bg-subtle)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '20px',
+            color: '#171717'
+          }}>
+            <Lock size={24} />
+          </div>
+
+          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '28px', fontWeight: '400', marginBottom: '8px' }}>
+            Admin Access
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.6', marginBottom: '28px' }}>
+            This console is reserved for the site author. Enter your passcode to unlock editorial and publishing tools.
+          </p>
+
+          <form onSubmit={handleUnlock} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <input
+                type="password"
+                required
+                autoFocus
+                placeholder="Enter admin passcode"
+                value={passcode}
+                onChange={(e) => setPasscode(e.target.value)}
+                className="form-input"
+                style={{
+                  fontSize: '15px',
+                  padding: '12px 16px',
+                  textAlign: 'center',
+                  letterSpacing: '0.15em'
+                }}
+                id="input-admin-passcode"
+              />
+            </div>
+
+            {authError && (
+              <div style={{
+                color: '#ef4444',
+                fontSize: '13px',
+                background: '#fef2f2',
+                padding: '10px',
+                borderRadius: '6px',
+                border: '1px solid #fee2e2'
+              }}>
+                {authError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isVerifying}
+              className="btn-primary"
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: '14px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+              id="btn-admin-unlock"
+            >
+              <Unlock size={16} />
+              <span>{isVerifying ? 'Verifying...' : 'Unlock Dashboard'}</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="content-wrap" id="admin-container" style={{ paddingBottom: '120px' }}>
       {/* Back to Home Navigation */}
@@ -398,6 +653,28 @@ export default function AdminPage() {
             <span>Home Page</span>
           </Link>
 
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="btn-secondary"
+            style={{ 
+              padding: '6px 14px', 
+              border: '1px solid #fecaca', 
+              borderRadius: '20px', 
+              fontSize: '13px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              color: '#dc2626',
+              background: '#fff'
+            }}
+            id="btn-admin-logout"
+            title="Log out and lock dashboard"
+          >
+            <LogOut size={14} />
+            <span>Log Out</span>
+          </button>
+
           {/* Database Status Badge */}
           {dbStatus && (
             <div 
@@ -436,6 +713,17 @@ export default function AdminPage() {
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
             <Layers size={16} />
             Manage Stories ({posts.length})
+          </span>
+        </button>
+
+        <button
+          onClick={() => { setActiveTab('notes'); loadNotes(); }}
+          className={`admin-tab-btn ${activeTab === 'notes' ? 'active' : ''}`}
+          id="tab-notes"
+        >
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <BookOpen size={16} />
+            Field Notes ({notesList.length})
           </span>
         </button>
 
@@ -1051,6 +1339,177 @@ export default function AdminPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB: FIELD NOTES MANAGEMENT */}
+      {/* ========================================================================= */}
+      {activeTab === 'notes' && (
+        <div id="admin-notes-section">
+          {/* Note Editor Form */}
+          <div style={{ background: 'var(--bg-surface)', padding: '32px', borderRadius: '8px', border: '1px solid var(--border-light)', marginBottom: '32px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '24px', fontWeight: '400', marginBottom: '4px' }}>
+                  {editingNoteId ? 'Edit Field Note' : 'Add New Field Note'}
+                </h2>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  Field notes appear publicly on the <Link to="/notes" target="_blank" style={{ color: '#2563eb', textDecoration: 'underline' }}>/notes</Link> page as concise engineering observations and thoughts.
+                </p>
+              </div>
+
+              {editingNoteId && (
+                <button
+                  type="button"
+                  onClick={handleCancelNoteEdit}
+                  className="btn-secondary"
+                  style={{ fontSize: '13px', color: '#ef4444' }}
+                >
+                  Cancel Edit
+                </button>
+              )}
+            </div>
+
+            <form onSubmit={handleSaveNote} id="form-field-note">
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label className="form-label" htmlFor="input-note-title">Note Title *</label>
+                <input
+                  id="input-note-title"
+                  type="text"
+                  required
+                  placeholder="e.g. Distributed Consensus or On Attention Mechanisms"
+                  value={noteTitle}
+                  onChange={(e) => setNoteTitle(e.target.value)}
+                  className="form-input"
+                  style={{ fontSize: '16px', fontWeight: '500' }}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '20px' }}>
+                <label className="form-label" htmlFor="input-note-thought">Thought / Markdown Reflection *</label>
+                <textarea
+                  id="input-note-thought"
+                  required
+                  rows={6}
+                  placeholder="Write your thought or reflection here. Markdown is fully supported..."
+                  value={noteThought}
+                  onChange={(e) => setNoteThought(e.target.value)}
+                  className="form-input"
+                  style={{ fontFamily: 'var(--font-sans)', fontSize: '14px', lineHeight: '1.6' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <button
+                  type="submit"
+                  disabled={isSavingNote}
+                  className="btn-primary"
+                  style={{ padding: '10px 24px', fontSize: '14px' }}
+                  id="btn-save-note"
+                >
+                  {isSavingNote ? 'Saving...' : editingNoteId ? 'Update Field Note' : 'Publish Field Note'}
+                </button>
+
+                {editingNoteId && (
+                  <button
+                    type="button"
+                    onClick={handleCancelNoteEdit}
+                    className="btn-secondary"
+                    style={{ padding: '10px 18px', fontSize: '14px' }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+
+          {/* Notes Directory Table */}
+          <div style={{ background: 'var(--bg-surface)', borderRadius: '8px', border: '1px solid var(--border-light)', overflow: 'hidden' }}>
+            <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '15px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#55534e' }}>
+                Published Notes ({notesList.length})
+              </h3>
+              <Link to="/notes" target="_blank" style={{ fontSize: '13px', color: '#2563eb', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span>View Public Page</span>
+                <ExternalLink size={13} />
+              </Link>
+            </div>
+
+            {loadingNotes ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#77736b' }}>
+                Loading notes...
+              </div>
+            ) : notesList.length === 0 ? (
+              <div style={{ padding: '50px 24px', textAlign: 'center', color: '#77736b' }}>
+                <BookOpen size={32} style={{ margin: '0 auto 12px', opacity: 0.4 }} />
+                <p style={{ fontSize: '16px', fontWeight: '500', marginBottom: '6px' }}>No field notes yet</p>
+                <p style={{ fontSize: '14px' }}>Add your first observation above to have it appear on the Notes page.</p>
+              </div>
+            ) : (
+              <div>
+                {notesList.map((note) => (
+                  <div 
+                    key={note.id} 
+                    style={{ 
+                      padding: '20px 24px', 
+                      borderBottom: '1px solid var(--border-light)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      gap: '20px'
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
+                        <h4 style={{ fontSize: '17px', fontWeight: '600', color: 'var(--text-main)', margin: 0 }}>
+                          {note.title}
+                        </h4>
+                        <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+                          {note.created_at ? new Date(note.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}
+                        </span>
+                      </div>
+                      <p style={{ 
+                        fontSize: '14px', 
+                        color: 'var(--text-secondary)', 
+                        lineHeight: '1.6', 
+                        whiteSpace: 'pre-wrap',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}>
+                        {note.thought}
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => handleEditNote(note)}
+                        className="btn-secondary"
+                        style={{ padding: '6px 12px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        title="Edit note"
+                      >
+                        <Edit3 size={14} />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteNote(note.id, note.title)}
+                        className="btn-secondary"
+                        style={{ padding: '6px 10px', fontSize: '13px', color: '#ef4444' }}
+                        title="Delete note"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>

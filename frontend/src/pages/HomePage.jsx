@@ -53,7 +53,7 @@ export default function HomePage() {
 
         <div className="hero-actions">
           <Link to="/about" className="btn-primary" id="btn-hero-about">
-            About me <ArrowRight size={16} />
+            <span>About me</span> <ArrowRight size={16} />
           </Link>
           <Link to="/projects" className="btn-secondary" id="btn-hero-projects">
             View projects →

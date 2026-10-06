@@ -70,3 +70,30 @@ class SubscribersSummary(BaseModel):
     total_active: int
     smtp_configured: bool
     subscribers: List[SubscriberResponse]
+
+class NoteBase(BaseModel):
+    title: str = Field(..., min_length=2, max_length=255)
+    thought: str = Field(..., min_length=3)
+
+class NoteCreate(NoteBase):
+    pass
+
+class NoteUpdate(BaseModel):
+    title: Optional[str] = None
+    thought: Optional[str] = None
+
+class NoteResponse(NoteBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class AdminVerifyRequest(BaseModel):
+    password: str
+
+class AdminVerifyResponse(BaseModel):
+    success: bool
+    message: str
+
