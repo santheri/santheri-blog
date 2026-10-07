@@ -36,15 +36,15 @@ const PROJECTS = [
 export default function ProjectsPage() {
   return (
     <div className="content-wrap" id="projects-page-container" style={{ paddingBottom: '120px' }}>
-      <div style={{ paddingTop: '50px' }}>
+      <div style={{ paddingTop: '28px' }}>
         <Link to="/" className="back-link">
           <ArrowLeft size={16} /> Back home
         </Link>
       </div>
 
-      <section className="hero-section" style={{ padding: '60px 0 70px' }}>
+      <section className="hero-section" style={{ padding: '24px 0 36px', maxWidth: '850px' }}>
         <p className="eyebrow">PORTFOLIO & WORK</p>
-        <h1 className="hero-title">
+        <h1 className="page-hero-title" style={{ margin: '12px 0 0' }}>
           Things I've built, worked on, and learned from.
         </h1>
       </section>

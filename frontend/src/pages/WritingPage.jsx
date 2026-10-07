@@ -45,19 +45,19 @@ export default function WritingPage() {
   return (
     <div className="content-wrap" id="writing-page-container" style={{ paddingBottom: '120px' }}>
       {/* Back to Home Link */}
-      <div style={{ paddingTop: '40px' }}>
+      <div style={{ paddingTop: '28px' }}>
         <Link to="/" className="back-link" id="link-back-home">
           <ArrowLeft size={16} /> Back home
         </Link>
       </div>
 
       {/* Editorial Header */}
-      <section className="hero-section" style={{ padding: '50px 0 60px', maxWidth: '850px' }}>
+      <section className="hero-section" style={{ padding: '24px 0 36px', maxWidth: '850px' }}>
         <p className="eyebrow" id="writing-eyebrow">
           {activeCategory ? activeCategory.toUpperCase() : 'WRITING'}
         </p>
 
-        <h1 className="hero-title" id="writing-header-title" style={{ margin: '16px 0 0' }}>
+        <h1 className="page-hero-title" id="writing-header-title" style={{ margin: '12px 0 0' }}>
           {activeCategory
             ? `Writing about ${activeCategory.toLowerCase()}.`
             : `Things I've written while trying to understand the world a little better.`}

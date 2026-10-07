@@ -27,6 +27,7 @@ export default function ArticlePage() {
       try {
         const data = await fetchPost(slug);
         setPost(data);
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
         if (data.font_style) {
           setActiveFont(data.font_style);
         }
