@@ -97,4 +97,5 @@ class AdminVerifyRequest(BaseModel):
 class AdminVerifyResponse(BaseModel):
     success: bool
     message: str
+    token: Optional[str] = None
 

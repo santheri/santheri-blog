@@ -2,6 +2,14 @@
 export const BACKEND_HOST = (import.meta.env.VITE_API_URL || 'https://api.santheribhat.com').replace(/\/+$/, '');
 export const API_BASE = `${BACKEND_HOST}/api`;
 
+/**
+ * Returns Authorization header with Bearer token if admin is unlocked.
+ */
+export function getAuthHeaders() {
+  const token = localStorage.getItem('santheri_admin_token') || localStorage.getItem('santheri_admin_passcode');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
 export function getImageUrl(url) {
   if (!url) return '';
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
@@ -25,7 +33,8 @@ export async function fetchPosts(category = '', search = '', includeDrafts = fal
     params.append('include_drafts', 'true');
   }
   
-  const res = await fetch(`${API_BASE}/posts?${params.toString()}`);
+  const headers = includeDrafts ? { ...getAuthHeaders() } : {};
+  const res = await fetch(`${API_BASE}/posts?${params.toString()}`, { headers });
   if (!res.ok) {
     throw new Error('Failed to fetch posts');
   }
@@ -43,7 +52,10 @@ export async function fetchPost(slugOrId) {
 export async function createPost(postData) {
   const res = await fetch(`${API_BASE}/posts`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify(postData),
   });
   if (!res.ok) {
@@ -56,7 +68,10 @@ export async function createPost(postData) {
 export async function updatePost(postId, postData) {
   const res = await fetch(`${API_BASE}/posts/${postId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify(postData),
   });
   if (!res.ok) {
@@ -69,9 +84,13 @@ export async function updatePost(postId, postData) {
 export async function deletePost(postId) {
   const res = await fetch(`${API_BASE}/posts/${postId}`, {
     method: 'DELETE',
+    headers: {
+      ...getAuthHeaders(),
+    },
   });
   if (!res.ok) {
-    throw new Error('Failed to delete post');
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Failed to delete post');
   }
   return true;
 }
@@ -82,6 +101,9 @@ export async function uploadPicture(file) {
   
   const res = await fetch(`${API_BASE}/upload`, {
     method: 'POST',
+    headers: {
+      ...getAuthHeaders(),
+    },
     body: formData,
   });
   if (!res.ok) {
@@ -117,9 +139,14 @@ export async function subscribeToNewsletter(email) {
 }
 
 export async function fetchSubscribers() {
-  const res = await fetch(`${API_BASE}/subscribers`);
+  const res = await fetch(`${API_BASE}/subscribers`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
   if (!res.ok) {
-    throw new Error('Failed to fetch subscribers');
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Failed to fetch subscribers');
   }
   return res.json();
 }
@@ -127,6 +154,9 @@ export async function fetchSubscribers() {
 export async function notifySubscribersManual(postId) {
   const res = await fetch(`${API_BASE}/posts/${postId}/notify-subscribers`, {
     method: 'POST',
+    headers: {
+      ...getAuthHeaders(),
+    },
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -138,7 +168,10 @@ export async function notifySubscribersManual(postId) {
 export async function sendTestEmail(email) {
   const res = await fetch(`${API_BASE}/subscribers/test-email`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify({ email }),
   });
   const data = await res.json().catch(() => ({}));
@@ -163,7 +196,10 @@ export async function fetchNotes() {
 export async function createNote(noteData) {
   const res = await fetch(`${API_BASE}/notes`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify(noteData),
   });
   const data = await res.json().catch(() => ({}));
@@ -176,7 +212,10 @@ export async function createNote(noteData) {
 export async function updateNote(noteId, noteData) {
   const res = await fetch(`${API_BASE}/notes/${noteId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify(noteData),
   });
   const data = await res.json().catch(() => ({}));
@@ -189,9 +228,13 @@ export async function updateNote(noteId, noteData) {
 export async function deleteNote(noteId) {
   const res = await fetch(`${API_BASE}/notes/${noteId}`, {
     method: 'DELETE',
+    headers: {
+      ...getAuthHeaders(),
+    },
   });
   if (!res.ok) {
-    throw new Error('Failed to delete note');
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || 'Failed to delete note');
   }
   return true;
 }
@@ -210,8 +253,9 @@ export async function verifyAdminPassword(password) {
   if (!res.ok) {
     throw new Error(data.detail || 'Incorrect admin passcode');
   }
+  if (data.token) {
+    localStorage.setItem('santheri_admin_token', data.token);
+  }
+  localStorage.setItem('santheri_admin_passcode', password);
   return data;
 }
-
-
-

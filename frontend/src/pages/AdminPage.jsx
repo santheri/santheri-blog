@@ -92,7 +92,9 @@ const FONT_STYLES = [
 export default function AdminPage() {
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('santheri_admin_auth') === 'true';
+    const isAuth = localStorage.getItem('santheri_admin_auth') === 'true';
+    const hasToken = !!(localStorage.getItem('santheri_admin_token') || localStorage.getItem('santheri_admin_passcode'));
+    return isAuth && hasToken;
   });
   const [passcode, setPasscode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -151,9 +153,13 @@ export default function AdminPage() {
     setIsVerifying(true);
     setAuthError('');
     try {
-      const res = await verifyAdminPassword(passcode);
+      const res = await verifyAdminPassword(passcode.trim());
       if (res && (res.success || res.valid)) {
         localStorage.setItem('santheri_admin_auth', 'true');
+        if (res.token) {
+          localStorage.setItem('santheri_admin_token', res.token);
+        }
+        localStorage.setItem('santheri_admin_passcode', passcode.trim());
         setIsAuthenticated(true);
         window.dispatchEvent(new Event('santheri-admin-auth-changed'));
         showToast('Admin dashboard unlocked!');
@@ -161,14 +167,7 @@ export default function AdminPage() {
         setAuthError('Incorrect passcode. Please try again.');
       }
     } catch (err) {
-      if (passcode === 'santheri2026') {
-        localStorage.setItem('santheri_admin_auth', 'true');
-        setIsAuthenticated(true);
-        window.dispatchEvent(new Event('santheri-admin-auth-changed'));
-        showToast('Admin dashboard unlocked!');
-      } else {
-        setAuthError(err.message || 'Incorrect passcode. Please try again.');
-      }
+      setAuthError(err.message || 'Incorrect passcode. Please try again.');
     } finally {
       setIsVerifying(false);
     }
@@ -176,6 +175,8 @@ export default function AdminPage() {
 
   const handleLogout = () => {
     localStorage.removeItem('santheri_admin_auth');
+    localStorage.removeItem('santheri_admin_token');
+    localStorage.removeItem('santheri_admin_passcode');
     setIsAuthenticated(false);
     setPasscode('');
     window.dispatchEvent(new Event('santheri-admin-auth-changed'));

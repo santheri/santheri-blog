@@ -34,6 +34,10 @@ class Settings(BaseSettings):
         default="santheri2026",
         validation_alias=AliasChoices("ADMIN_PASSWORD", "admin_password")
     )
+    enable_docs: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("ENABLE_DOCS", "enable_docs")
+    )
 
 
     # Config dict: look for .env file in backend/ directory, fallback to system env vars

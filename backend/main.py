@@ -17,6 +17,7 @@ import schemas
 import email_service
 from config import settings
 from seed_data import seed_default_posts, seed_default_notes, slugify
+from auth import verify_admin, is_admin_authenticated, create_admin_token
 
 # Ensure database tables exist in Neon / DB
 Base.metadata.create_all(bind=engine)
@@ -39,8 +40,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Santheri Blog API",
-    description="Backend API for Santheri's Personal Blog connected with Neon PostgreSQL",
+    description="Backend API for Santheri's Personal Blog connected with Neon PostgreSQL. Admin actions are secured with Bearer authentication.",
     version="1.0.0",
+    docs_url="/docs" if settings.enable_docs else None,
+    redoc_url="/redoc" if settings.enable_docs else None,
     lifespan=lifespan
 )
 
@@ -94,11 +97,13 @@ def get_posts(
     category: Optional[str] = Query(None, description="Filter by Travel, Technology, or Life"),
     search: Optional[str] = Query(None, description="Search in title or description"),
     include_drafts: bool = Query(False, description="Include drafts for admin view"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    is_admin: bool = Depends(is_admin_authenticated)
 ):
     query = db.query(models.Post)
     
-    if not include_drafts:
+    # Only authenticated admin may view drafts
+    if not (include_drafts and is_admin):
         query = query.filter(models.Post.is_draft == False)
         
     if category and category.lower() != "all":
@@ -131,8 +136,13 @@ def get_post(slug_or_id: str, db: Session = Depends(get_db)):
         
     return post
 
-@app.post("/api/posts", response_model=schemas.PostResponse, status_code=status.HTTP_201_CREATED)
-def create_post(post_in: schemas.PostCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+@app.post("/api/posts", response_model=schemas.PostResponse, status_code=status.HTTP_201_CREATED, summary="[Admin] Create Blog Post")
+def create_post(
+    post_in: schemas.PostCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    _: bool = Depends(verify_admin)
+):
     # Normalize category
     category_map = {"travel": "Travel", "technology": "Technology", "life": "Life"}
     normalized_category = category_map.get(post_in.category.strip().lower(), post_in.category.strip().title())
@@ -177,8 +187,14 @@ def create_post(post_in: schemas.PostCreate, background_tasks: BackgroundTasks, 
 
     return db_post
 
-@app.put("/api/posts/{post_id}", response_model=schemas.PostResponse)
-def update_post(post_id: int, post_update: schemas.PostUpdate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+@app.put("/api/posts/{post_id}", response_model=schemas.PostResponse, summary="[Admin] Update Blog Post")
+def update_post(
+    post_id: int,
+    post_update: schemas.PostUpdate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    _: bool = Depends(verify_admin)
+):
     db_post = db.query(models.Post).filter(models.Post.id == post_id).first()
     if not db_post:
         raise HTTPException(status_code=404, detail="Post not found")
@@ -213,8 +229,13 @@ def update_post(post_id: int, post_update: schemas.PostUpdate, background_tasks:
 
     return db_post
 
-@app.post("/api/posts/{post_id}/notify-subscribers")
-def notify_subscribers_manual(post_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+@app.post("/api/posts/{post_id}/notify-subscribers", summary="[Admin] Manually Notify Subscribers")
+def notify_subscribers_manual(
+    post_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    _: bool = Depends(verify_admin)
+):
     """Allows admin to manually trigger or re-broadcast a post notification to subscribers."""
     db_post = db.query(models.Post).filter(models.Post.id == post_id).first()
     if not db_post:
@@ -234,8 +255,12 @@ def notify_subscribers_manual(post_id: int, background_tasks: BackgroundTasks, d
     )
     return {"message": f"Broadcasting notification to {len(emails)} active subscriber(s).", "count": len(emails)}
 
-@app.delete("/api/posts/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_post(post_id: int, db: Session = Depends(get_db)):
+@app.delete("/api/posts/{post_id}", status_code=status.HTTP_204_NO_CONTENT, summary="[Admin] Delete Blog Post")
+def delete_post(
+    post_id: int,
+    db: Session = Depends(get_db),
+    _: bool = Depends(verify_admin)
+):
     db_post = db.query(models.Post).filter(models.Post.id == post_id).first()
     if not db_post:
         raise HTTPException(status_code=404, detail="Post not found")
@@ -324,8 +349,11 @@ def unsubscribe(sub_in: schemas.SubscribeRequest, db: Session = Depends(get_db))
         db.commit()
     return {"success": True, "message": "You have been unsubscribed."}
 
-@app.get("/api/subscribers", response_model=schemas.SubscribersSummary)
-def get_subscribers(db: Session = Depends(get_db)):
+@app.get("/api/subscribers", response_model=schemas.SubscribersSummary, summary="[Admin] List Subscribers")
+def get_subscribers(
+    db: Session = Depends(get_db),
+    _: bool = Depends(verify_admin)
+):
     subscribers = db.query(models.Subscriber).order_by(desc(models.Subscriber.created_at)).all()
     total_active = sum(1 for s in subscribers if s.is_active)
     config = email_service.get_email_config()
@@ -335,8 +363,12 @@ def get_subscribers(db: Session = Depends(get_db)):
         "subscribers": subscribers
     }
 
-@app.post("/api/subscribers/test-email")
-def send_test_subscriber_email(sub_in: schemas.SubscribeRequest, db: Session = Depends(get_db)):
+@app.post("/api/subscribers/test-email", summary="[Admin] Send Test Email")
+def send_test_subscriber_email(
+    sub_in: schemas.SubscribeRequest,
+    db: Session = Depends(get_db),
+    _: bool = Depends(verify_admin)
+):
     email = sub_in.email.strip().lower()
     if not EMAIL_REGEX.match(email):
         raise HTTPException(status_code=400, detail="Please enter a valid email address.")
@@ -356,8 +388,11 @@ def send_test_subscriber_email(sub_in: schemas.SubscribeRequest, db: Session = D
     return {"success": True, "message": f"Test email sent successfully to {email}!"}
 
 
-@app.post("/api/upload", response_model=schemas.UploadResponse)
-async def upload_file(file: UploadFile = File(...)):
+@app.post("/api/upload", response_model=schemas.UploadResponse, summary="[Admin] Upload Media File")
+async def upload_file(
+    file: UploadFile = File(...),
+    _: bool = Depends(verify_admin)
+):
     # Validate extension
     allowed_extensions = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".avif"}
     filename = file.filename or "upload.jpg"
@@ -387,8 +422,12 @@ def get_notes(db: Session = Depends(get_db)):
     notes = db.query(models.Note).order_by(desc(models.Note.created_at)).all()
     return notes
 
-@app.post("/api/notes", response_model=schemas.NoteResponse, status_code=status.HTTP_201_CREATED)
-def create_note(note_in: schemas.NoteCreate, db: Session = Depends(get_db)):
+@app.post("/api/notes", response_model=schemas.NoteResponse, status_code=status.HTTP_201_CREATED, summary="[Admin] Create Field Note")
+def create_note(
+    note_in: schemas.NoteCreate,
+    db: Session = Depends(get_db),
+    _: bool = Depends(verify_admin)
+):
     db_note = models.Note(
         title=note_in.title.strip(),
         thought=note_in.thought.strip()
@@ -398,8 +437,13 @@ def create_note(note_in: schemas.NoteCreate, db: Session = Depends(get_db)):
     db.refresh(db_note)
     return db_note
 
-@app.put("/api/notes/{note_id}", response_model=schemas.NoteResponse)
-def update_note(note_id: int, note_update: schemas.NoteUpdate, db: Session = Depends(get_db)):
+@app.put("/api/notes/{note_id}", response_model=schemas.NoteResponse, summary="[Admin] Update Field Note")
+def update_note(
+    note_id: int,
+    note_update: schemas.NoteUpdate,
+    db: Session = Depends(get_db),
+    _: bool = Depends(verify_admin)
+):
     db_note = db.query(models.Note).filter(models.Note.id == note_id).first()
     if not db_note:
         raise HTTPException(status_code=404, detail="Note not found")
@@ -411,8 +455,12 @@ def update_note(note_id: int, note_update: schemas.NoteUpdate, db: Session = Dep
     db.refresh(db_note)
     return db_note
 
-@app.delete("/api/notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_note(note_id: int, db: Session = Depends(get_db)):
+@app.delete("/api/notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT, summary="[Admin] Delete Field Note")
+def delete_note(
+    note_id: int,
+    db: Session = Depends(get_db),
+    _: bool = Depends(verify_admin)
+):
     db_note = db.query(models.Note).filter(models.Note.id == note_id).first()
     if not db_note:
         raise HTTPException(status_code=404, detail="Note not found")
@@ -424,7 +472,7 @@ def delete_note(note_id: int, db: Session = Depends(get_db)):
 # ADMIN AUTHENTICATION VERIFY ENDPOINT
 # ==============================================================================
 
-@app.post("/api/admin/verify", response_model=schemas.AdminVerifyResponse)
+@app.post("/api/admin/verify", response_model=schemas.AdminVerifyResponse, summary="Verify Admin Passcode & Get Token")
 def verify_admin_password(payload: schemas.AdminVerifyRequest):
     expected_password = settings.admin_password.strip()
     if not payload.password or payload.password.strip() != expected_password:
@@ -432,8 +480,10 @@ def verify_admin_password(payload: schemas.AdminVerifyRequest):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect admin passcode. Access denied."
         )
+    token = create_admin_token()
     return {
         "success": True,
+        "token": token,
         "message": "Admin authenticated successfully."
     }
 
