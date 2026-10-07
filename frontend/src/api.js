@@ -1,6 +1,6 @@
-// Helper utilities for interacting with FastAPI Backend & Neon.tech DB
-
-const API_BASE = '/api';
+// Base API URL: Points to https://api.santheribhat.com (overrideable via VITE_API_URL)
+export const BACKEND_HOST = (import.meta.env.VITE_API_URL || 'https://api.santheribhat.com').replace(/\/+$/, '');
+export const API_BASE = `${BACKEND_HOST}/api`;
 
 export async function fetchPosts(category = '', search = '', includeDrafts = false) {
   const params = new URLSearchParams();
@@ -77,7 +77,11 @@ export async function uploadPicture(file) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.detail || 'Failed to upload picture');
   }
-  return res.json();
+  const data = await res.json();
+  if (data.url && data.url.startsWith('/') && BACKEND_HOST) {
+    data.url = `${BACKEND_HOST}${data.url}`;
+  }
+  return data;
 }
 
 export async function fetchSystemStatus() {
