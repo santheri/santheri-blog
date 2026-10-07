@@ -46,9 +46,8 @@ backend/*.db
 backend/*.sqlite
 backend/*.sqlite3
 
-# Uploaded Media (keep directory via .gitkeep, ignore uploaded files)
-backend/uploads/*
-!backend/uploads/.gitkeep
+# Uploaded Media (tracked in git for deployment)
+# backend/uploads/*
 
 # ==============================================================================
 # JAVASCRIPT / REACT / NODE

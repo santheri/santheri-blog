@@ -2,6 +2,17 @@
 export const BACKEND_HOST = (import.meta.env.VITE_API_URL || 'https://api.santheribhat.com').replace(/\/+$/, '');
 export const API_BASE = `${BACKEND_HOST}/api`;
 
+export function getImageUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  if (url.startsWith('/uploads/')) {
+    return `${BACKEND_HOST}${url}`;
+  }
+  return url;
+}
+
 export async function fetchPosts(category = '', search = '', includeDrafts = false) {
   const params = new URLSearchParams();
   if (category && category.toLowerCase() !== 'all') {

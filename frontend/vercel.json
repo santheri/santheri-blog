@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/uploads/(.*)",
+      "destination": "https://api.santheribhat.com/uploads/$1"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "https://api.santheribhat.com/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

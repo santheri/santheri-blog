@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fetchPost } from '../api';
+import { fetchPost, getImageUrl } from '../api';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import NewsletterSubscribe from '../components/NewsletterSubscribe';
 import { ArrowLeft, Clock, Calendar, Type } from 'lucide-react';
@@ -140,7 +140,7 @@ export default function ArticlePage() {
         {/* Featured Cover Picture if uploaded */}
         {post.cover_image && (
           <img
-            src={post.cover_image}
+            src={getImageUrl(post.cover_image)}
             alt={post.title}
             className="article-cover-img"
             id="article-cover-image"

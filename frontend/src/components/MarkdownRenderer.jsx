@@ -1,4 +1,5 @@
 import React from 'react';
+import { getImageUrl } from '../api';
 
 export default function MarkdownRenderer({ content, className = '' }) {
   if (!content) return null;
@@ -63,7 +64,7 @@ export default function MarkdownRenderer({ content, className = '' }) {
           return (
             <figure key={index} style={{ margin: '36px 0', textAlign: 'center' }}>
               <img
-                src={imgMatch[2]}
+                src={getImageUrl(imgMatch[2])}
                 alt={imgMatch[1]}
                 style={{ maxWidth: '100%', borderRadius: '8px', border: '1px solid #dedcd6' }}
               />
