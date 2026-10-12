@@ -349,6 +349,58 @@ export default function AdminPage() {
     }
   };
 
+  // Helper: Client-side image optimization (resizes to max 1600px, 85% JPEG) to keep upload fast and DB storage lean
+  const compressImageIfNeeded = async (file, maxDimension = 1600, quality = 0.85) => {
+    if (!file.type.startsWith('image/') || file.type.includes('svg') || file.size < 250 * 1024) {
+      return file;
+    }
+
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = Math.round((height * maxDimension) / width);
+              width = maxDimension;
+            } else {
+              width = Math.round((width * maxDimension) / height);
+              height = maxDimension;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              if (blob && blob.size < file.size) {
+                const compressedFile = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+                  type: 'image/jpeg',
+                  lastModified: Date.now()
+                });
+                resolve(compressedFile);
+              } else {
+                resolve(file);
+              }
+            },
+            'image/jpeg',
+            quality
+          );
+        };
+        img.onerror = () => resolve(file);
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve(file);
+      reader.readAsDataURL(file);
+    });
+  };
+
   // Picture Upload handler
   const handleFileUpload = async (e) => {
     const files = e.target.files;
@@ -357,7 +409,8 @@ export default function AdminPage() {
     setIsUploading(true);
     try {
       for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+        const rawFile = files[i];
+        const file = await compressImageIfNeeded(rawFile);
         const res = await uploadPicture(file);
         setUploadedImages(prev => [res, ...prev]);
 
@@ -891,10 +944,10 @@ export default function AdminPage() {
                   />
                   <Upload size={32} style={{ color: '#77736b', marginBottom: '8px' }} />
                   <p style={{ fontWeight: '500', marginBottom: '4px' }}>
-                    {isUploading ? 'Uploading picture to server...' : 'Click to upload pictures from your device'}
+                    {isUploading ? 'Optimizing & uploading picture to database...' : 'Click to upload pictures from your device'}
                   </p>
                   <p style={{ fontSize: '12px', color: '#77736b' }}>
-                    Supports PNG, JPG, JPEG, WEBP, GIF, SVG. Uploaded files are served directly.
+                    Supports PNG, JPG, JPEG, WEBP, GIF, SVG. Uploaded files are automatically optimized and permanently stored in Neon DB.
                   </p>
                 </div>
 

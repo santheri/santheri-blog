@@ -5,7 +5,7 @@ import re
 from contextlib import asynccontextmanager
 from typing import List, Optional
 import uvicorn
-from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Query, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Query, BackgroundTasks, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
@@ -391,6 +391,7 @@ def send_test_subscriber_email(
 @app.post("/api/upload", response_model=schemas.UploadResponse, summary="[Admin] Upload Media File")
 async def upload_file(
     file: UploadFile = File(...),
+    db: Session = Depends(get_db),
     _: bool = Depends(verify_admin)
 ):
     # Validate extension
@@ -403,15 +404,54 @@ async def upload_file(
             detail=f"Invalid file extension {ext}. Allowed: {', '.join(allowed_extensions)}"
         )
         
-    unique_filename = f"{uuid.uuid4().hex[:12]}{ext.lower()}"
-    destination_path = os.path.join(UPLOAD_DIR, unique_filename)
-    
-    with open(destination_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-        
-    # Return URL reachable from frontend
-    file_url = f"/uploads/{unique_filename}"
-    return {"url": file_url, "filename": unique_filename}
+    content_bytes = await file.read()
+    mime_types = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+        ".gif": "image/gif",
+        ".svg": "image/svg+xml",
+        ".avif": "image/avif"
+    }
+    content_type = file.content_type or mime_types.get(ext.lower(), "image/jpeg")
+
+    # Store permanently in Neon PostgreSQL database
+    db_image = models.UploadedImage(
+        filename=filename,
+        content_type=content_type,
+        data=content_bytes
+    )
+    db.add(db_image)
+    db.commit()
+    db.refresh(db_image)
+
+    # Also keep a local cache in UPLOAD_DIR
+    try:
+        unique_filename = f"{uuid.uuid4().hex[:12]}{ext.lower()}"
+        destination_path = os.path.join(UPLOAD_DIR, unique_filename)
+        with open(destination_path, "wb") as buffer:
+            buffer.write(content_bytes)
+    except Exception:
+        pass
+
+    file_url = f"/api/images/{db_image.id}"
+    return {"url": file_url, "filename": filename}
+
+
+@app.get("/api/images/{image_id}", summary="Get persistent uploaded image")
+def get_image(image_id: int, db: Session = Depends(get_db)):
+    img = db.query(models.UploadedImage).filter(models.UploadedImage.id == image_id).first()
+    if not img:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return Response(
+        content=img.data,
+        media_type=img.content_type,
+        headers={
+            "Cache-Control": "public, max-age=31536000, immutable",
+            "Access-Control-Allow-Origin": "*"
+        }
+    )
 
 # ==============================================================================
 # FIELD NOTES ENDPOINTS

@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, LargeBinary
 from database import Base
 
 class Post(Base):
@@ -34,5 +34,15 @@ class Note(Base):
     thought = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+class UploadedImage(Base):
+    __tablename__ = "uploaded_images"
+
+    id = Column(Integer, primary_key=True, index=True)
+    filename = Column(String(255), nullable=False)
+    content_type = Column(String(100), default="image/jpeg", nullable=False)
+    data = Column(LargeBinary, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
 
 
