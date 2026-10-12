@@ -24,6 +24,7 @@ export default function NewsletterSubscribe({
       const res = await subscribeToNewsletter(email.trim());
       setStatus({ 
         type: 'success', 
+        isAlready: Boolean(res.already_subscribed),
         message: res.message || "You're subscribed! Check your inbox for confirmation." 
       });
       setEmail('');
@@ -50,8 +51,25 @@ export default function NewsletterSubscribe({
           <div className="newsletter-feedback success" id="subscription-success-box">
             <Check size={18} className="feedback-icon" />
             <div>
-              <strong>Subscribed!</strong>
+              <strong>{status.isAlready ? 'Already Subscribed!' : 'Subscribed!'}</strong>
               <p>{status.message}</p>
+              <button
+                type="button"
+                onClick={() => setStatus(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  marginTop: '8px',
+                  color: '#047857',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  textDecoration: 'underline',
+                  cursor: 'pointer'
+                }}
+              >
+                Subscribe another email →
+              </button>
             </div>
           </div>
         ) : (

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { fetchPosts } from '../api';
 import { ArrowLeft } from 'lucide-react';
 
 export default function WritingPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const activeCategory = searchParams.get('category');
   const activeSearch = searchParams.get('search') || '';
 
@@ -25,6 +26,17 @@ export default function WritingPage() {
     }
     loadPosts();
   }, [activeCategory, activeSearch]);
+
+  const handleCategoryClick = (category) => {
+    const params = new URLSearchParams(searchParams);
+    if (!category || category.toLowerCase() === 'all') {
+      params.delete('category');
+    } else {
+      params.set('category', category);
+    }
+    const query = params.toString();
+    navigate(query ? `/writing?${query}` : '/writing');
+  };
 
   const formatDate = (dateStr) => {
     try {
@@ -52,7 +64,7 @@ export default function WritingPage() {
       </div>
 
       {/* Editorial Header */}
-      <section className="hero-section" style={{ padding: '24px 0 36px', maxWidth: '850px' }}>
+      <section className="hero-section" style={{ padding: '24px 0 28px', maxWidth: '850px' }}>
         <p className="eyebrow" id="writing-eyebrow">
           {activeCategory ? activeCategory.toUpperCase() : 'WRITING'}
         </p>
@@ -71,8 +83,27 @@ export default function WritingPage() {
         )}
       </section>
 
+      {/* In-page Category Filter Pills (All | Technology | Travel | Life) */}
+      <div className="category-filter-bar" id="writing-category-filter-bar">
+        {['All', 'Technology', 'Travel', 'Life'].map((cat) => {
+          const isSelected = (!activeCategory && cat === 'All') ||
+            (activeCategory && activeCategory.toLowerCase() === cat.toLowerCase());
+          return (
+            <button
+              key={cat}
+              type="button"
+              className={`category-tab ${isSelected ? 'active' : ''}`}
+              onClick={() => handleCategoryClick(cat)}
+              id={`writing-cat-filter-${cat.toLowerCase()}`}
+            >
+              {cat}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Posts Listing */}
-      <section className="feed-section" style={{ paddingTop: 0 }}>
+      <section className="feed-section" style={{ paddingTop: '20px' }}>
         {loading ? (
           <div style={{ padding: '60px 0', textAlign: 'center', color: '#77736b' }}>
             Loading writing collection...

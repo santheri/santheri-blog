@@ -35,10 +35,11 @@ export default function Navbar() {
     setSearchTerm(searchParams.get('search') || '');
   }, [location.search]);
 
-  // Close mobile drawer on route changes
+  // Close mobile drawer and mobile search bar on page route changes
   useEffect(() => {
     setMobileOpen(false);
-  }, [location.pathname, location.search]);
+    setMobileSearchOpen(false);
+  }, [location.pathname]);
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
@@ -60,16 +61,16 @@ export default function Navbar() {
     if (cat) params.append('category', cat);
     if (val.trim()) params.append('search', val.trim());
     
-    navigate(`/writing?${params.toString()}`);
+    navigate(`/writing?${params.toString()}`, { replace: true });
   };
 
   const clearSearch = () => {
     setSearchTerm('');
     const cat = searchParams.get('category');
     if (cat) {
-      navigate(`/writing?category=${cat}`);
+      navigate(`/writing?category=${cat}`, { replace: true });
     } else {
-      navigate('/writing');
+      navigate('/writing', { replace: true });
     }
   };
 

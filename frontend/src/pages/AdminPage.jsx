@@ -6,6 +6,7 @@ import {
   deletePost, 
   fetchPosts, 
   uploadPicture, 
+  getImageUrl,
   fetchSystemStatus,
   fetchSubscribers,
   notifySubscribersManual,
@@ -918,7 +919,11 @@ export default function AdminPage() {
                     <div className="picture-preview-gallery">
                       {uploadedImages.map((img, i) => (
                         <div key={i} className="picture-preview-thumb">
-                          <img src={img.url} alt="Uploaded" />
+                          <img 
+                            src={getImageUrl(img.url)} 
+                            alt="Uploaded" 
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
                           <div className="thumb-actions">
                             <button
                               type="button"
@@ -946,13 +951,14 @@ export default function AdminPage() {
                 {coverImage && (
                   <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <img
-                      src={coverImage}
+                      src={getImageUrl(coverImage)}
                       alt="Cover Preview"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
                       style={{ width: '80px', height: '50px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #dedcd6' }}
                     />
                     <div style={{ fontSize: '13px' }}>
                       <span style={{ fontWeight: '600' }}>Active Cover Picture: </span>
-                      <span style={{ color: '#77736b' }}>{coverImage}</span>
+                      <span style={{ color: '#77736b', wordBreak: 'break-all' }}>{coverImage}</span>
                       <button
                         type="button"
                         onClick={() => setCoverImage('')}
@@ -1053,7 +1059,12 @@ export default function AdminPage() {
                 <h1 className="article-title">{title || 'Untitled Story'}</h1>
                 {description && <p className="article-desc">{description}</p>}
                 {coverImage && (
-                  <img src={coverImage} alt="Cover Preview" className="article-cover-img" />
+                  <img 
+                    src={getImageUrl(coverImage)} 
+                    alt="Cover Preview" 
+                    className="article-cover-img" 
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
                 )}
                 <MarkdownRenderer content={content || '*No content written yet.*'} />
               </div>

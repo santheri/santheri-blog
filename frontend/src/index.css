@@ -194,14 +194,16 @@ button {
   font-size: 15px;
   color: #77736b;
   position: relative;
-  padding-bottom: 2px;
+  display: inline-block;
+  padding: 4px 2px;
   font-weight: 500;
-  transition: font-size 0.15s ease, color 0.15s ease;
+  transform-origin: center;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
 }
 
 .main-nav a.nav-link:hover {
-  font-size: 16px;
-  color: inherit !important;
+  transform: scale(1.06);
+  color: var(--text-primary) !important;
   text-decoration: none !important;
 }
 
@@ -223,14 +225,15 @@ button {
   gap: 5px;
   font-size: 15px;
   color: #77736b;
-  padding: 4px 0;
+  padding: 4px 2px;
   font-weight: 500;
-  transition: font-size 0.15s ease, color 0.15s ease;
+  transform-origin: center;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
 }
 
 .writing-trigger:hover {
-  font-size: 16px;
-  color: inherit !important;
+  transform: scale(1.06);
+  color: var(--text-primary) !important;
   text-decoration: none !important;
 }
 
@@ -514,9 +517,9 @@ a.btn-primary:hover {
 .post-item-row:hover .post-item-title a,
 .post-item-title:hover,
 .post-item-title a:hover {
-  font-size: 31px;
-  color: inherit !important;
+  color: var(--text-primary) !important;
   text-decoration: none !important;
+  transform: translateX(4px);
 }
 
 .post-meta-top {
@@ -549,7 +552,8 @@ a.btn-primary:hover {
   line-height: 1.25;
   margin-bottom: 12px;
   color: var(--text-main);
-  transition: font-size 0.15s ease;
+  display: inline-block;
+  transition: color 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .post-item-desc {
@@ -1455,9 +1459,24 @@ a.btn-primary:hover {
     align-items: center;
   }
 
+  .content-wrap {
+    padding: 0 20px;
+  }
+
+  .reading-wrap {
+    padding: 0 20px;
+  }
+
   .post-item-row {
     grid-template-columns: 1fr;
     gap: 15px;
+  }
+
+  .post-item-title {
+    font-size: 25px;
+    line-height: 1.25;
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   .post-date-col {
@@ -1477,6 +1496,78 @@ a.btn-primary:hover {
     padding: 50px 0 60px;
   }
 
+  .article-header-area {
+    padding: 36px 0 28px;
+  }
+
+  .article-title {
+    font-size: clamp(28px, 6.5vw, 42px);
+    line-height: 1.18;
+    letter-spacing: -0.02em;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .article-desc {
+    font-size: 18px;
+    line-height: 1.5;
+    margin-bottom: 20px;
+  }
+
+  .article-body {
+    font-size: 18px;
+    line-height: 1.7;
+    margin: 32px auto 0;
+  }
+
+  .article-body h2 {
+    font-size: 26px;
+    margin-top: 36px;
+  }
+
+  .article-body h3 {
+    font-size: 21px;
+    margin-top: 28px;
+  }
+
+  .article-body pre {
+    padding: 14px;
+    font-size: 13px;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .admin-header-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .admin-tabs {
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+    scrollbar-width: none;
+  }
+
+  .admin-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .admin-tab-btn {
+    flex-shrink: 0;
+  }
+
+  .category-filter-bar {
+    gap: 8px;
+  }
+
+  .category-tab {
+    padding: 6px 14px;
+    font-size: 12px;
+  }
+
   .notebook-card {
     padding: 35px 20px;
   }
@@ -1485,5 +1576,36 @@ a.btn-primary:hover {
     flex-direction: column;
     gap: 14px;
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .content-wrap {
+    padding: 0 16px;
+  }
+
+  .reading-wrap {
+    padding: 0 16px;
+  }
+
+  .hero-title {
+    font-size: 36px;
+  }
+
+  .page-hero-title {
+    font-size: 25px;
+  }
+
+  .post-item-title {
+    font-size: 22px;
+  }
+
+  .article-title {
+    font-size: 28px;
+  }
+
+  .article-body {
+    font-size: 17px;
+    line-height: 1.65;
   }
 }

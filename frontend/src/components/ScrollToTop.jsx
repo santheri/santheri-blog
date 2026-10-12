@@ -34,7 +34,7 @@ export default function ScrollToTop() {
     // Cross-browser fallbacks
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
-  }, [pathname, search, hash]);
+  }, [pathname, hash]);
 
   return null;
 }

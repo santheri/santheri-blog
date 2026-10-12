@@ -12,13 +12,20 @@ export function getAuthHeaders() {
 
 export function getImageUrl(url) {
   if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
-    return url;
+  const trimmed = url.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+    return trimmed;
   }
-  if (url.startsWith('/uploads/')) {
-    return `${BACKEND_HOST}${url}`;
+  if (trimmed.startsWith('/uploads/')) {
+    return `${BACKEND_HOST}${trimmed}`;
   }
-  return url;
+  if (trimmed.startsWith('uploads/')) {
+    return `${BACKEND_HOST}/${trimmed}`;
+  }
+  if (trimmed.startsWith('/')) {
+    return `${BACKEND_HOST}${trimmed}`;
+  }
+  return trimmed;
 }
 
 export async function fetchPosts(category = '', search = '', includeDrafts = false) {

@@ -3,22 +3,13 @@ import { useParams, Link } from 'react-router-dom';
 import { fetchPost, getImageUrl } from '../api';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import NewsletterSubscribe from '../components/NewsletterSubscribe';
-import { ArrowLeft, Clock, Calendar, Type } from 'lucide-react';
-
-const FONT_OPTIONS = [
-  { id: 'serif', label: 'Literary Serif', className: 'font-serif' },
-  { id: 'sans', label: 'Modern Sans', className: 'font-sans' },
-  { id: 'editorial', label: 'Editorial', className: 'font-editorial' },
-  { id: 'mono', label: 'Tech Mono', className: 'font-mono' },
-  { id: 'minimal', label: 'Poetic Minimal', className: 'font-minimal' },
-];
+import { ArrowLeft, Clock, Calendar } from 'lucide-react';
 
 export default function ArticlePage() {
   const { slug } = useParams();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeFont, setActiveFont] = useState('serif');
 
   useEffect(() => {
     async function loadPost() {
@@ -28,9 +19,6 @@ export default function ArticlePage() {
         const data = await fetchPost(slug);
         setPost(data);
         window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-        if (data.font_style) {
-          setActiveFont(data.font_style);
-        }
       } catch (err) {
         setError(err.message || 'Article not found');
       } finally {
@@ -78,34 +66,15 @@ export default function ArticlePage() {
     );
   }
 
+  const articleFontClass = `font-${post.font_style || 'serif'}`;
+
   return (
-    <article className={`article-page ${FONT_OPTIONS.find(f => f.id === activeFont)?.className || 'font-serif'}`} id="article-page">
+    <article className={`article-page ${articleFontClass}`} id="article-page">
       <div className="reading-wrap">
         <div className="article-header-area">
           <Link to="/writing" className="back-link" id="back-to-writing-link">
             <ArrowLeft size={16} /> Back to writing
           </Link>
-
-          {/* Interactive Reader Typography Switcher */}
-          <div className="reader-font-toolbar" id="reader-font-toolbar">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#77736b' }}>
-              <Type size={15} />
-              <span>Typography:</span>
-            </div>
-            <div className="reader-font-controls" id="reader-font-controls">
-              {FONT_OPTIONS.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setActiveFont(f.id)}
-                  className={`font-switch-btn ${activeFont === f.id ? 'active' : ''}`}
-                  id={`btn-switch-font-${f.id}`}
-                  title={`Switch reading font to ${f.label}`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
 
           <p className={`eyebrow ${getCategoryClass(post.category)}`} style={{ marginBottom: '14px' }}>
             {post.category.toUpperCase()}
@@ -121,7 +90,7 @@ export default function ArticlePage() {
             </p>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', color: '#77736b', fontSize: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', color: '#77736b', fontSize: '14px', flexWrap: 'wrap' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
               <Calendar size={15} />
               <time dateTime={post.created_at}>{formatDate(post.created_at)}</time>
@@ -130,11 +99,6 @@ export default function ArticlePage() {
               <Clock size={15} />
               <span>{post.reading_time || '4 min read'}</span>
             </span>
-            {post.font_style && (
-              <span className="post-font-badge" title="Author's chosen default font">
-                Author styling: {post.font_style}
-              </span>
-            )}
           </div>
         </div>
 
@@ -145,6 +109,9 @@ export default function ArticlePage() {
             alt={post.title}
             className="article-cover-img"
             id="article-cover-image"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
           />
         )}
 
