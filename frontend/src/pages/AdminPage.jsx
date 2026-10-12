@@ -1773,17 +1773,34 @@ export default function AdminPage() {
               </div>
 
               <div className="form-group" style={{ marginBottom: '20px' }}>
-                <label className="form-label" htmlFor="input-proj-desc">Project Description *</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label className="form-label" style={{ marginBottom: 0 }} htmlFor="input-proj-desc">
+                    Project Brief & Technical Overview (Markdown Supported) *
+                  </label>
+                  <span style={{ fontSize: '12px', color: '#77736b' }}>
+                    Rendered in the public project modal pop-up window
+                  </span>
+                </div>
                 <textarea
                   id="input-proj-desc"
                   required
-                  rows={3}
-                  placeholder="Describe what the project does, key technical insights, problem solved..."
+                  rows={8}
+                  placeholder="Write a comprehensive brief about this project... Outline architecture highlights, key features, challenges solved, tech stack decisions, or links. Markdown is fully supported."
                   value={projDescription}
                   onChange={(e) => setProjDescription(e.target.value)}
                   className="form-input"
-                  style={{ fontFamily: 'var(--font-sans)', fontSize: '14px', lineHeight: '1.6' }}
+                  style={{ fontFamily: 'var(--font-serif)', fontSize: '15px', lineHeight: '1.7' }}
                 />
+                {projDescription && (
+                  <div style={{ marginTop: '12px', padding: '18px 22px', background: 'var(--bg-subtle)', borderRadius: '6px', border: '1px solid var(--border-light)' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', display: 'block', marginBottom: '8px' }}>
+                      Live Preview of Project Brief in Pop-up Modal
+                    </span>
+                    <div style={{ fontFamily: 'var(--font-serif)', fontSize: '16px', lineHeight: '1.7', color: 'var(--text-main)' }}>
+                      <MarkdownRenderer content={projDescription} />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
