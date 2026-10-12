@@ -16,7 +16,7 @@ import models
 import schemas
 import email_service
 from config import settings
-from seed_data import seed_default_posts, seed_default_notes, slugify
+from seed_data import seed_default_posts, seed_default_notes, seed_default_projects, seed_default_about, slugify
 from auth import verify_admin, is_admin_authenticated, create_admin_token
 
 # Ensure database tables exist in Neon / DB
@@ -28,11 +28,13 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Seed initial posts and notes if DB is newly created
+    # Startup: Seed initial posts, notes, projects, and about profile if DB is newly created
     db = next(get_db())
     try:
         seed_default_posts(db)
         seed_default_notes(db)
+        seed_default_projects(db)
+        seed_default_about(db)
     finally:
         db.close()
     yield
@@ -363,6 +365,20 @@ def get_subscribers(
         "subscribers": subscribers
     }
 
+@app.delete("/api/subscribers/{subscriber_id}", summary="[Admin] Delete Subscriber")
+def delete_subscriber(
+    subscriber_id: int,
+    db: Session = Depends(get_db),
+    _: bool = Depends(verify_admin)
+):
+    sub = db.query(models.Subscriber).filter(models.Subscriber.id == subscriber_id).first()
+    if not sub:
+        raise HTTPException(status_code=404, detail="Subscriber not found")
+    email = sub.email
+    db.delete(sub)
+    db.commit()
+    return {"success": True, "message": f"Subscriber {email} removed successfully"}
+
 @app.post("/api/subscribers/test-email", summary="[Admin] Send Test Email")
 def send_test_subscriber_email(
     sub_in: schemas.SubscribeRequest,
@@ -507,6 +523,115 @@ def delete_note(
     db.delete(db_note)
     db.commit()
     return None
+
+# ==============================================================================
+# PROJECTS ENDPOINTS
+# ==============================================================================
+
+@app.get("/api/projects", response_model=List[schemas.ProjectResponse], summary="List Projects")
+def get_projects(db: Session = Depends(get_db)):
+    projects = db.query(models.Project).order_by(models.Project.id).all()
+    return projects
+
+@app.post("/api/projects", response_model=schemas.ProjectResponse, status_code=status.HTTP_201_CREATED, summary="[Admin] Create Project")
+def create_project(
+    project_in: schemas.ProjectCreate,
+    db: Session = Depends(get_db),
+    _: bool = Depends(verify_admin)
+):
+    db_project = models.Project(
+        number=project_in.number,
+        category=project_in.category.strip(),
+        title=project_in.title.strip(),
+        description=project_in.description.strip(),
+        tags=project_in.tags.strip() if project_in.tags else None,
+        github_url=project_in.github_url.strip() if project_in.github_url else None,
+        live_url=project_in.live_url.strip() if project_in.live_url else None
+    )
+    db.add(db_project)
+    db.commit()
+    db.refresh(db_project)
+    return db_project
+
+@app.put("/api/projects/{project_id}", response_model=schemas.ProjectResponse, summary="[Admin] Update Project")
+def update_project(
+    project_id: int,
+    project_update: schemas.ProjectUpdate,
+    db: Session = Depends(get_db),
+    _: bool = Depends(verify_admin)
+):
+    db_project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not db_project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if project_update.title is not None:
+        db_project.title = project_update.title.strip()
+    if project_update.category is not None:
+        db_project.category = project_update.category.strip()
+    if project_update.description is not None:
+        db_project.description = project_update.description.strip()
+    if project_update.tags is not None:
+        db_project.tags = project_update.tags.strip()
+    if project_update.github_url is not None:
+        db_project.github_url = project_update.github_url.strip() or None
+    if project_update.live_url is not None:
+        db_project.live_url = project_update.live_url.strip() or None
+    if project_update.number is not None:
+        db_project.number = project_update.number.strip() or None
+    db.commit()
+    db.refresh(db_project)
+    return db_project
+
+@app.delete("/api/projects/{project_id}", summary="[Admin] Delete Project")
+def delete_project(
+    project_id: int,
+    db: Session = Depends(get_db),
+    _: bool = Depends(verify_admin)
+):
+    db_project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not db_project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    db.delete(db_project)
+    db.commit()
+    return {"success": True, "message": "Project deleted successfully"}
+
+# ==============================================================================
+# ABOUT PROFILE ENDPOINTS
+# ==============================================================================
+
+@app.get("/api/about", response_model=schemas.AboutProfileResponse, summary="Get About Profile")
+def get_about(db: Session = Depends(get_db)):
+    profile = db.query(models.AboutProfile).filter(models.AboutProfile.id == 1).first()
+    if not profile:
+        import seed_data
+        seed_data.seed_default_about(db)
+        profile = db.query(models.AboutProfile).filter(models.AboutProfile.id == 1).first()
+    return profile
+
+@app.put("/api/about", response_model=schemas.AboutProfileResponse, summary="[Admin] Update About Profile")
+def update_about(
+    about_update: schemas.AboutProfileUpdate,
+    db: Session = Depends(get_db),
+    _: bool = Depends(verify_admin)
+):
+    profile = db.query(models.AboutProfile).filter(models.AboutProfile.id == 1).first()
+    if not profile:
+        profile = models.AboutProfile(
+            id=1,
+            headline=about_update.headline or "A little bit about me.",
+            bio=about_update.bio or "",
+            avatar_image=about_update.avatar_image
+        )
+        db.add(profile)
+    else:
+        if about_update.headline is not None:
+            profile.headline = about_update.headline.strip()
+        if about_update.bio is not None:
+            profile.bio = about_update.bio.strip()
+        if about_update.avatar_image is not None:
+            profile.avatar_image = about_update.avatar_image.strip() or None
+    db.commit()
+    db.refresh(profile)
+    return profile
 
 # ==============================================================================
 # ADMIN AUTHENTICATION VERIFY ENDPOINT

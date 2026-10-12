@@ -9,13 +9,20 @@ import {
   getImageUrl,
   fetchSystemStatus,
   fetchSubscribers,
+  deleteSubscriber,
   notifySubscribersManual,
   sendTestEmail,
   fetchNotes,
   createNote,
   updateNote,
   deleteNote,
-  verifyAdminPassword
+  verifyAdminPassword,
+  fetchProjects,
+  createProject,
+  updateProject,
+  deleteProject,
+  fetchAboutProfile,
+  updateAboutProfile
 } from '../api';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import { 
@@ -47,7 +54,9 @@ import {
   Lock,
   Unlock,
   LogOut,
-  BookOpen
+  BookOpen,
+  Briefcase,
+  User
 } from 'lucide-react';
 
 const CATEGORIES = ['Travel', 'Technology', 'Life'];
@@ -139,12 +148,36 @@ export default function AdminPage() {
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
 
+  // Projects State
+  const [projectsList, setProjectsList] = useState([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [editingProjectId, setEditingProjectId] = useState(null);
+  const [projNumber, setProjNumber] = useState('');
+  const [projCategory, setProjCategory] = useState('');
+  const [projTitle, setProjTitle] = useState('');
+  const [projDescription, setProjDescription] = useState('');
+  const [projTags, setProjTags] = useState('');
+  const [projGithub, setProjGithub] = useState('');
+  const [projLive, setProjLive] = useState('');
+  const [isSavingProject, setIsSavingProject] = useState(false);
+
+  // About Me State
+  const [aboutHeadline, setAboutHeadline] = useState('');
+  const [aboutBio, setAboutBio] = useState('');
+  const [aboutAvatar, setAboutAvatar] = useState('');
+  const [loadingAbout, setLoadingAbout] = useState(false);
+  const [isSavingAbout, setIsSavingAbout] = useState(false);
+  const [isUploadingAboutAvatar, setIsUploadingAboutAvatar] = useState(false);
+  const aboutAvatarInputRef = useRef(null);
+
   useEffect(() => {
     if (isAuthenticated) {
       loadStatus();
       loadAllPosts();
       loadSubscribers();
       loadNotes();
+      loadProjects();
+      loadAbout();
     }
   }, [isAuthenticated]);
 
@@ -255,6 +288,165 @@ export default function AdminPage() {
     setEditingNoteId(null);
     setNoteTitle('');
     setNoteThought('');
+  };
+
+  const loadProjects = async () => {
+    setLoadingProjects(true);
+    try {
+      const data = await fetchProjects();
+      setProjectsList(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error('Failed to load projects', e);
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
+  const handleSaveProject = async (e) => {
+    e.preventDefault();
+    if (!projTitle.trim()) {
+      showToast('Project title is required', 'error');
+      return;
+    }
+    setIsSavingProject(true);
+    try {
+      const payload = {
+        number: projNumber.trim() || undefined,
+        category: projCategory.trim() || 'PROJECT',
+        title: projTitle.trim(),
+        description: projDescription.trim(),
+        tags: projTags.trim(),
+        github_url: projGithub.trim() || null,
+        live_url: projLive.trim() || null
+      };
+      if (editingProjectId) {
+        await updateProject(editingProjectId, payload);
+        showToast('Project updated successfully!');
+      } else {
+        await createProject(payload);
+        showToast('New project created successfully!');
+      }
+      resetProjectForm();
+      loadProjects();
+    } catch (err) {
+      showToast(err.message || 'Failed to save project', 'error');
+    } finally {
+      setIsSavingProject(false);
+    }
+  };
+
+  const handleEditProject = (proj) => {
+    setEditingProjectId(proj.id);
+    setProjNumber(proj.number || '');
+    setProjCategory(proj.category || '');
+    setProjTitle(proj.title || '');
+    setProjDescription(proj.description || '');
+    setProjTags(proj.tags || '');
+    setProjGithub(proj.github_url || '');
+    setProjLive(proj.live_url || '');
+    window.scrollTo({ top: 300, behavior: 'smooth' });
+  };
+
+  const handleDeleteProject = async (projId, title) => {
+    if (!window.confirm(`Are you sure you want to delete project "${title}"?`)) return;
+    try {
+      await deleteProject(projId);
+      showToast('Project deleted.');
+      if (editingProjectId === projId) {
+        resetProjectForm();
+      }
+      loadProjects();
+    } catch (err) {
+      showToast(err.message || 'Failed to delete project', 'error');
+    }
+  };
+
+  const resetProjectForm = () => {
+    setEditingProjectId(null);
+    setProjNumber('');
+    setProjCategory('');
+    setProjTitle('');
+    setProjDescription('');
+    setProjTags('');
+    setProjGithub('');
+    setProjLive('');
+  };
+
+  const loadAbout = async () => {
+    setLoadingAbout(true);
+    try {
+      const data = await fetchAboutProfile();
+      if (data) {
+        setAboutHeadline(data.headline || '');
+        setAboutBio(data.bio || '');
+        setAboutAvatar(data.avatar_image || '');
+      }
+    } catch (e) {
+      console.error('Failed to load about profile', e);
+    } finally {
+      setLoadingAbout(false);
+    }
+  };
+
+  const handleSaveAbout = async (e) => {
+    e.preventDefault();
+    setIsSavingAbout(true);
+    try {
+      await updateAboutProfile({
+        headline: aboutHeadline.trim(),
+        bio: aboutBio.trim(),
+        avatar_image: aboutAvatar.trim() || null
+      });
+      showToast('About Me profile updated successfully!');
+    } catch (err) {
+      showToast(err.message || 'Failed to save About Me profile', 'error');
+    } finally {
+      setIsSavingAbout(false);
+    }
+  };
+
+  const handleAboutAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingAboutAvatar(true);
+    try {
+      const compressed = await compressImageIfNeeded(file);
+      const res = await uploadPicture(compressed);
+      setAboutAvatar(res.url);
+      showToast('Profile picture uploaded successfully!');
+    } catch (err) {
+      showToast(err.message || 'Failed to upload profile picture', 'error');
+    } finally {
+      setIsUploadingAboutAvatar(false);
+      if (aboutAvatarInputRef.current) aboutAvatarInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteSubscriber = async (subscriberId, email) => {
+    if (!window.confirm(`Are you sure you want to delete subscriber ${email}?`)) return;
+    try {
+      await deleteSubscriber(subscriberId);
+      showToast(`Subscriber ${email} deleted.`);
+      loadSubscribers();
+    } catch (err) {
+      showToast(err.message || 'Failed to delete subscriber', 'error');
+    }
+  };
+
+  const handleToolbarInsertImage = () => {
+    const url = window.prompt("Enter image URL or path (e.g. https://... or uploaded image URL):");
+    if (!url) return;
+    const caption = window.prompt("Image caption / description (optional):", "Illustration") || "";
+    const snippet = `\n\n![${caption}](${url})\n\n`;
+    if (textareaRef.current) {
+      const start = textareaRef.current.selectionStart || content.length;
+      const end = textareaRef.current.selectionEnd || content.length;
+      const newContent = content.slice(0, start) + snippet + content.slice(end);
+      setContent(newContent);
+    } else {
+      setContent(prev => prev + snippet);
+    }
+    showToast('Image inserted into story markdown!');
   };
 
   const loadSubscribers = async () => {
@@ -772,6 +964,28 @@ export default function AdminPage() {
         </button>
 
         <button
+          onClick={() => { setActiveTab('projects'); loadProjects(); }}
+          className={`admin-tab-btn ${activeTab === 'projects' ? 'active' : ''}`}
+          id="tab-projects"
+        >
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <Briefcase size={16} />
+            Projects ({projectsList.length})
+          </span>
+        </button>
+
+        <button
+          onClick={() => { setActiveTab('about'); loadAbout(); }}
+          className={`admin-tab-btn ${activeTab === 'about' ? 'active' : ''}`}
+          id="tab-about"
+        >
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <User size={16} />
+            About Me
+          </span>
+        </button>
+
+        <button
           onClick={() => { setActiveTab('notes'); loadNotes(); }}
           className={`admin-tab-btn ${activeTab === 'notes' ? 'active' : ''}`}
           id="tab-notes"
@@ -1056,6 +1270,10 @@ export default function AdminPage() {
                     <button type="button" onClick={() => insertFormat('*', '*')} className="btn-secondary" style={{ padding: '2px 8px' }} title="Italic">
                       <Italic size={16} />
                     </button>
+                    <button type="button" onClick={handleToolbarInsertImage} className="btn-secondary" style={{ padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }} title="Insert Image between content">
+                      <ImageIcon size={16} />
+                      <span style={{ fontSize: '11px', fontWeight: '600' }}>Image</span>
+                    </button>
                     <button type="button" onClick={() => insertFormat('> ')} className="btn-secondary" style={{ padding: '2px 8px' }} title="Quote">
                       <Quote size={16} />
                     </button>
@@ -1078,6 +1296,31 @@ export default function AdminPage() {
                   className={`form-textarea font-${fontStyle}`}
                   style={{ minHeight: '380px' }}
                 />
+
+                {/* Quick Insert for uploaded images & custom placement guidance */}
+                {uploadedImages.length > 0 && (
+                  <div style={{ marginTop: '10px', padding: '12px 16px', background: 'var(--bg-subtle)', borderRadius: '6px', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                      Insert uploaded image at cursor:
+                    </span>
+                    {uploadedImages.map((img, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => insertImageIntoContent(img.url, img.filename)}
+                        className="btn-secondary"
+                        style={{ fontSize: '11px', padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        title={`Insert ${img.filename} at current cursor location`}
+                      >
+                        <ImageIcon size={12} />
+                        <span>{img.filename.length > 18 ? img.filename.slice(0, 18) + '…' : img.filename}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p style={{ fontSize: '12px', color: '#77736b', marginTop: '6px' }}>
+                  Tip: You can add multiple images anywhere in the story (after a few paragraphs, between thoughts, or after code blocks). Upload above, then click <strong>Insert</strong> or use the <strong>Image</strong> button.
+                </p>
               </div>
 
               {/* Draft Status & Publish */}
@@ -1389,16 +1632,28 @@ export default function AdminPage() {
                           {new Date(sub.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                         </td>
                         <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                          <button
-                            type="button"
-                            onClick={() => handleSendTest(sub.email)}
-                            disabled={isSendingTest}
-                            className="btn-secondary"
-                            style={{ fontSize: '12px', padding: '4px 10px' }}
-                            title={`Send test email to ${sub.email}`}
-                          >
-                            Send Test
-                          </button>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleSendTest(sub.email)}
+                              disabled={isSendingTest}
+                              className="btn-secondary"
+                              style={{ fontSize: '12px', padding: '4px 10px' }}
+                              title={`Send test email to ${sub.email}`}
+                            >
+                              Send Test
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSubscriber(sub.id, sub.email)}
+                              className="btn-secondary"
+                              style={{ fontSize: '12px', padding: '4px 10px', color: '#ef4444', borderColor: '#fecaca', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                              title={`Delete subscriber ${sub.email}`}
+                            >
+                              <Trash2 size={13} />
+                              <span>Delete</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1406,6 +1661,424 @@ export default function AdminPage() {
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB: PROJECTS PORTFOLIO MANAGEMENT */}
+      {/* ========================================================================= */}
+      {activeTab === 'projects' && (
+        <div id="admin-projects-section">
+          {/* Project Editor Form */}
+          <div style={{ background: 'var(--bg-surface)', padding: '32px', borderRadius: '8px', border: '1px solid var(--border-light)', marginBottom: '32px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '24px', fontWeight: '400', marginBottom: '4px' }}>
+                  {editingProjectId ? 'Edit Project' : 'Add New Portfolio Project'}
+                </h2>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  Projects appear publicly on the <Link to="/projects" target="_blank" style={{ color: '#2563eb', textDecoration: 'underline' }}>/projects</Link> page.
+                </p>
+              </div>
+
+              {editingProjectId && (
+                <button
+                  type="button"
+                  onClick={resetProjectForm}
+                  className="btn-secondary"
+                  style={{ fontSize: '13px', color: '#ef4444' }}
+                >
+                  Cancel Edit
+                </button>
+              )}
+            </div>
+
+            <form onSubmit={handleSaveProject} id="form-project-editor">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 3fr', gap: '16px', marginBottom: '16px' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" htmlFor="input-proj-number">Number / Index</label>
+                  <input
+                    id="input-proj-number"
+                    type="text"
+                    placeholder="e.g. 01, 02"
+                    value={projNumber}
+                    onChange={(e) => setProjNumber(e.target.value)}
+                    className="form-input"
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" htmlFor="input-proj-title">Project Title *</label>
+                  <input
+                    id="input-proj-title"
+                    type="text"
+                    required
+                    placeholder="e.g. AI Agent Platform"
+                    value={projTitle}
+                    onChange={(e) => setProjTitle(e.target.value)}
+                    className="form-input"
+                    style={{ fontWeight: '500' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px', marginBottom: '16px' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" htmlFor="input-proj-category">Category Eyebrow</label>
+                  <input
+                    id="input-proj-category"
+                    type="text"
+                    placeholder="e.g. AI · AGENT PLATFORM"
+                    value={projCategory}
+                    onChange={(e) => setProjCategory(e.target.value)}
+                    className="form-input"
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" htmlFor="input-proj-tags">Tech Stack Tags (Comma separated)</label>
+                  <input
+                    id="input-proj-tags"
+                    type="text"
+                    placeholder="e.g. Python, FastAPI, React, LangChain"
+                    value={projTags}
+                    onChange={(e) => setProjTags(e.target.value)}
+                    className="form-input"
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" htmlFor="input-proj-github">GitHub Repository URL</label>
+                  <input
+                    id="input-proj-github"
+                    type="url"
+                    placeholder="https://github.com/santheri/..."
+                    value={projGithub}
+                    onChange={(e) => setProjGithub(e.target.value)}
+                    className="form-input"
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" htmlFor="input-proj-live">Live Demo / Site URL (Optional)</label>
+                  <input
+                    id="input-proj-live"
+                    type="url"
+                    placeholder="https://..."
+                    value={projLive}
+                    onChange={(e) => setProjLive(e.target.value)}
+                    className="form-input"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '20px' }}>
+                <label className="form-label" htmlFor="input-proj-desc">Project Description *</label>
+                <textarea
+                  id="input-proj-desc"
+                  required
+                  rows={3}
+                  placeholder="Describe what the project does, key technical insights, problem solved..."
+                  value={projDescription}
+                  onChange={(e) => setProjDescription(e.target.value)}
+                  className="form-input"
+                  style={{ fontFamily: 'var(--font-sans)', fontSize: '14px', lineHeight: '1.6' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <button
+                  type="submit"
+                  disabled={isSavingProject}
+                  className="btn-primary"
+                  style={{ padding: '10px 24px', fontSize: '14px' }}
+                  id="btn-save-project"
+                >
+                  {isSavingProject ? 'Saving...' : editingProjectId ? 'Update Project' : 'Publish Project'}
+                </button>
+
+                {editingProjectId && (
+                  <button
+                    type="button"
+                    onClick={resetProjectForm}
+                    className="btn-secondary"
+                    style={{ padding: '10px 18px', fontSize: '14px' }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+
+          {/* Projects Directory Table */}
+          <div style={{ background: 'var(--bg-surface)', borderRadius: '8px', border: '1px solid var(--border-light)', overflow: 'hidden' }}>
+            <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '15px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#55534e' }}>
+                Existing Projects ({projectsList.length})
+              </h3>
+              <Link to="/projects" target="_blank" style={{ fontSize: '13px', color: '#2563eb', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span>View Public Page</span>
+                <ExternalLink size={13} />
+              </Link>
+            </div>
+
+            {loadingProjects ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#77736b' }}>
+                Loading projects...
+              </div>
+            ) : projectsList.length === 0 ? (
+              <div style={{ padding: '50px 24px', textAlign: 'center', color: '#77736b' }}>
+                <Briefcase size={32} style={{ margin: '0 auto 12px', opacity: 0.4 }} />
+                <p style={{ fontSize: '16px', fontWeight: '500', marginBottom: '6px' }}>No projects yet</p>
+                <p style={{ fontSize: '14px' }}>Add your first project above to showcase your work.</p>
+              </div>
+            ) : (
+              <div>
+                {projectsList.map((proj) => (
+                  <div
+                    key={proj.id}
+                    style={{
+                      padding: '20px 24px',
+                      borderBottom: '1px solid var(--border-light)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      gap: '20px'
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                        {proj.number && (
+                          <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-tertiary)', letterSpacing: '0.05em' }}>
+                            {proj.number}
+                          </span>
+                        )}
+                        <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-secondary)', fontWeight: '600' }}>
+                          {proj.category}
+                        </span>
+                        <h4 style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-main)', margin: 0 }}>
+                          {proj.title}
+                        </h4>
+                      </div>
+                      <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '10px' }}>
+                        {proj.description}
+                      </p>
+                      {proj.tags && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                          {(typeof proj.tags === 'string' ? proj.tags.split(',') : proj.tags).map((t, idx) => (
+                            <span key={idx} style={{ fontSize: '11px', padding: '2px 8px', background: 'var(--bg-subtle)', borderRadius: '4px', color: 'var(--text-secondary)' }}>
+                              {typeof t === 'string' ? t.trim() : t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: '12px', fontSize: '13px' }}>
+                        {proj.github_url && (
+                          <a href={proj.github_url} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <span>GitHub</span> <ExternalLink size={12} />
+                          </a>
+                        )}
+                        {proj.live_url && (
+                          <a href={proj.live_url} target="_blank" rel="noopener noreferrer" style={{ color: '#059669', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <span>Live Demo</span> <ExternalLink size={12} />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => handleEditProject(proj)}
+                        className="btn-secondary"
+                        style={{ padding: '6px 12px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        title="Edit project"
+                      >
+                        <Edit3 size={14} />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteProject(proj.id, proj.title)}
+                        className="btn-secondary"
+                        style={{ padding: '6px 10px', fontSize: '13px', color: '#ef4444' }}
+                        title="Delete project"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB: ABOUT ME PROFILE MANAGEMENT */}
+      {/* ========================================================================= */}
+      {activeTab === 'about' && (
+        <div id="admin-about-section">
+          <div style={{ background: 'var(--bg-surface)', padding: '32px', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div>
+                <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '26px', fontWeight: '400', marginBottom: '4px' }}>
+                  Edit About Me Page
+                </h2>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  Customise your public bio, headline, and profile portrait displayed on the <Link to="/about" target="_blank" style={{ color: '#2563eb', textDecoration: 'underline' }}>/about</Link> page.
+                </p>
+              </div>
+
+              <Link
+                to="/about"
+                target="_blank"
+                className="btn-secondary"
+                style={{ fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <span>View Public About Page</span>
+                <ExternalLink size={14} />
+              </Link>
+            </div>
+
+            <form onSubmit={handleSaveAbout} id="form-about-editor">
+              {/* Profile Picture Upload & Preview */}
+              <div style={{ marginBottom: '28px', padding: '20px', background: 'var(--bg-subtle)', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+                <label className="form-label" style={{ marginBottom: '10px' }}>Profile Picture / Portrait</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
+                  {aboutAvatar ? (
+                    <div style={{ position: 'relative' }}>
+                      <img
+                        src={getImageUrl(aboutAvatar)}
+                        alt="Profile avatar"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        style={{ width: '110px', height: '110px', borderRadius: '8px', objectFit: 'cover', border: '2px solid var(--border-medium)', boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setAboutAvatar('')}
+                        style={{
+                          position: 'absolute',
+                          top: '-8px',
+                          right: '-8px',
+                          background: '#ef4444',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '22px',
+                          height: '22px',
+                          fontSize: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer'
+                        }}
+                        title="Remove picture"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ width: '110px', height: '110px', borderRadius: '8px', border: '2px dashed var(--border-medium)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', flexDirection: 'column', gap: '4px' }}>
+                      <User size={28} />
+                      <span style={{ fontSize: '11px' }}>No photo</span>
+                    </div>
+                  )}
+
+                  <div style={{ flex: 1, minWidth: '240px' }}>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
+                      <input
+                        type="file"
+                        ref={aboutAvatarInputRef}
+                        accept="image/*"
+                        onChange={handleAboutAvatarUpload}
+                        style={{ display: 'none' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => aboutAvatarInputRef.current && aboutAvatarInputRef.current.click()}
+                        disabled={isUploadingAboutAvatar}
+                        className="btn-secondary"
+                        style={{ padding: '8px 16px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Upload size={14} />
+                        <span>{isUploadingAboutAvatar ? 'Uploading...' : 'Upload Profile Picture'}</span>
+                      </button>
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                        Or enter direct image URL:
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="https://... (or uploaded image URL)"
+                        value={aboutAvatar}
+                        onChange={(e) => setAboutAvatar(e.target.value)}
+                        className="form-input"
+                        style={{ fontSize: '13px', padding: '8px 12px' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Headline */}
+              <div className="form-group" style={{ marginBottom: '20px' }}>
+                <label className="form-label" htmlFor="input-about-headline">Hero Headline *</label>
+                <input
+                  id="input-about-headline"
+                  type="text"
+                  required
+                  placeholder="e.g. A little bit about me."
+                  value={aboutHeadline}
+                  onChange={(e) => setAboutHeadline(e.target.value)}
+                  className="form-input"
+                  style={{ fontSize: '16px', fontWeight: '500' }}
+                />
+              </div>
+
+              {/* Bio (Markdown) */}
+              <div className="form-group" style={{ marginBottom: '24px' }}>
+                <label className="form-label" htmlFor="textarea-about-bio">
+                  Biography & Background (Markdown Supported) *
+                </label>
+                <textarea
+                  id="textarea-about-bio"
+                  required
+                  rows={10}
+                  placeholder="Write your biography. Multiple paragraphs, bold text, links, and lists are fully supported..."
+                  value={aboutBio}
+                  onChange={(e) => setAboutBio(e.target.value)}
+                  className="form-input"
+                  style={{ fontFamily: 'var(--font-serif)', fontSize: '15px', lineHeight: '1.75' }}
+                />
+              </div>
+
+              {/* Live Preview */}
+              {aboutBio && (
+                <div style={{ marginBottom: '28px', padding: '24px', background: 'var(--bg-subtle)', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+                  <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)', display: 'block', marginBottom: '12px' }}>
+                    Preview of About Page Content
+                  </span>
+                  <div style={{ fontFamily: 'var(--font-serif)', fontSize: '18px', lineHeight: '1.7', color: 'var(--text-main)' }}>
+                    <MarkdownRenderer content={aboutBio} />
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isSavingAbout}
+                className="btn-primary"
+                style={{ padding: '12px 28px', fontSize: '14px', fontWeight: '600' }}
+                id="btn-save-about-profile"
+              >
+                {isSavingAbout ? 'Saving Profile...' : 'Save About Me Changes'}
+              </button>
+            </form>
           </div>
         </div>
       )}

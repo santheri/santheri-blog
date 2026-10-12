@@ -187,3 +187,83 @@ def seed_default_notes(db: Session):
         db.commit()
         print("Default notes seeded successfully.")
 
+SAMPLE_PROJECTS = [
+    {
+        "number": "01",
+        "category": "AI · AGENT PLATFORM",
+        "title": "AI Agent Platform",
+        "description": "A platform for creating autonomous agents, multi-step workflows and tools while exploring the possibilities of agent-based software systems.",
+        "tags": "AI Agents, Python, FastAPI, LangChain, TypeScript",
+        "github_url": "https://github.com/santheri/ai-agent-platform",
+        "live_url": ""
+    },
+    {
+        "number": "02",
+        "category": "RAILWAY · REAL-TIME SYSTEM",
+        "title": "Railway Safety System",
+        "description": "A real-time railway monitoring system designed to detect abnormal conditions, speed variations and improve railway track safety.",
+        "tags": "Node.js, WebSockets, Leaflet Maps, FRMCS, Telemetry",
+        "github_url": "https://github.com/santheri/railway-safety-system",
+        "live_url": ""
+    },
+    {
+        "number": "03",
+        "category": "WEB APPLICATION",
+        "title": "Personal Blog Engine",
+        "description": "A lightweight blogging platform built while exploring clean backend design, SQLAlchemy, Neon PostgreSQL, secure authentication, and editorial typography.",
+        "tags": "FastAPI, SQLAlchemy, Neon PostgreSQL, React, Vite",
+        "github_url": "https://github.com/santheri/santheri-blog",
+        "live_url": ""
+    },
+    {
+        "number": "04",
+        "category": "DATA · MACHINE LEARNING",
+        "title": "Customer Segmentation Engine",
+        "description": "A data analysis project utilizing RFM analysis and market basket algorithms to understand consumer behaviour patterns at scale.",
+        "tags": "Python, Pandas, Apriori, Power BI, Scikit-Learn",
+        "github_url": "https://github.com/santheri/customer-segmentation-engine",
+        "live_url": ""
+    }
+]
+
+def seed_default_projects(db: Session):
+    existing_count = db.query(models.Project).count()
+    if existing_count == 0:
+        print("Projects table is empty. Seeding default projects...")
+        for item in SAMPLE_PROJECTS:
+            project = models.Project(
+                number=item["number"],
+                category=item["category"],
+                title=item["title"],
+                description=item["description"],
+                tags=item["tags"],
+                github_url=item["github_url"],
+                live_url=item["live_url"]
+            )
+            db.add(project)
+        db.commit()
+        print("Default projects seeded successfully.")
+
+DEFAULT_ABOUT_BIO = """I'm Santheri, a software engineer who likes building things, learning things I don't understand yet, and occasionally disappearing somewhere new.
+
+I currently work in software and spend a lot of my time exploring AI, agent systems, and the many interesting problems that come with building resilient technology.
+
+Outside of work, I write, travel, take photographs, read, and collect thoughts that I probably should have written down earlier.
+
+This website is where I keep some of those things — organized neatly into **Travel**, **Technology**, and **Life**."""
+
+def seed_default_about(db: Session):
+    existing = db.query(models.AboutProfile).filter(models.AboutProfile.id == 1).first()
+    if not existing:
+        print("About profile is empty. Seeding default about profile...")
+        profile = models.AboutProfile(
+            id=1,
+            headline="A little bit about me.",
+            bio=DEFAULT_ABOUT_BIO,
+            avatar_image=None
+        )
+        db.add(profile)
+        db.commit()
+        print("Default about profile seeded successfully.")
+
+

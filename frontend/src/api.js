@@ -158,6 +158,20 @@ export async function fetchSubscribers() {
   return res.json();
 }
 
+export async function deleteSubscriber(subscriberId) {
+  const res = await fetch(`${API_BASE}/subscribers/${subscriberId}`, {
+    method: 'DELETE',
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.detail || 'Failed to delete subscriber');
+  }
+  return data;
+}
+
 export async function notifySubscribersManual(postId) {
   const res = await fetch(`${API_BASE}/posts/${postId}/notify-subscribers`, {
     method: 'POST',
@@ -266,3 +280,90 @@ export async function verifyAdminPassword(password) {
   localStorage.setItem('santheri_admin_passcode', password);
   return data;
 }
+
+// ==============================================================================
+// PROJECTS API
+// ==============================================================================
+
+export async function fetchProjects() {
+  const res = await fetch(`${API_BASE}/projects`);
+  if (!res.ok) {
+    throw new Error('Failed to fetch projects');
+  }
+  return res.json();
+}
+
+export async function createProject(projectData) {
+  const res = await fetch(`${API_BASE}/projects`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(projectData),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.detail || 'Failed to create project');
+  }
+  return data;
+}
+
+export async function updateProject(projectId, projectData) {
+  const res = await fetch(`${API_BASE}/projects/${projectId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(projectData),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.detail || 'Failed to update project');
+  }
+  return data;
+}
+
+export async function deleteProject(projectId) {
+  const res = await fetch(`${API_BASE}/projects/${projectId}`, {
+    method: 'DELETE',
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.detail || 'Failed to delete project');
+  }
+  return true;
+}
+
+// ==============================================================================
+// ABOUT PROFILE API
+// ==============================================================================
+
+export async function fetchAboutProfile() {
+  const res = await fetch(`${API_BASE}/about`);
+  if (!res.ok) {
+    throw new Error('Failed to fetch about profile');
+  }
+  return res.json();
+}
+
+export async function updateAboutProfile(profileData) {
+  const res = await fetch(`${API_BASE}/about`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(profileData),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.detail || 'Failed to update about profile');
+  }
+  return data;
+}
+

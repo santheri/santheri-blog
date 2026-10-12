@@ -4,8 +4,9 @@ import { getImageUrl } from '../api';
 export default function MarkdownRenderer({ content, className = '' }) {
   if (!content) return null;
 
-  // Split by double newline into blocks
-  const blocks = content.split(/\n\s*\n/);
+  // Normalize content: ensure images ![alt](url) on their own lines are treated as separate blocks
+  const normalizedContent = content.replace(/(^|\n)(!\[[^\]]*\]\([^)]+\))(\n|$)/g, '$1\n\n$2\n\n$3');
+  const blocks = normalizedContent.split(/\n\s*\n/).filter(b => b.trim().length > 0);
 
   const renderItalics = (text, keyPrefix = 'it') => {
     if (!text) return null;
@@ -43,12 +44,12 @@ export default function MarkdownRenderer({ content, className = '' }) {
     });
   };
 
-  const renderInline = (text) => {
+  const renderTextAndLinks = (text) => {
     if (!text) return '';
 
-    // Handle links [text](url)
+    // Handle regular links [text](url) with negative lookbehind (?<!\!) so images aren't hijacked
     const parts = [];
-    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    const linkRegex = /(?<!\!)\[([^\]]+)\]\(([^)]+)\)/g;
     let lastIndex = 0;
     let match;
 
@@ -69,6 +70,48 @@ export default function MarkdownRenderer({ content, className = '' }) {
     }
 
     return parts.length > 0 ? parts : renderFormatting(text);
+  };
+
+  const renderInline = (text) => {
+    if (!text) return '';
+
+    // If an image ![alt](url) exists inside text, render it cleanly as an image figure
+    const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+    if (imageRegex.test(text)) {
+      const segments = [];
+      let lastImgIdx = 0;
+      let imgMatch;
+      imageRegex.lastIndex = 0;
+      while ((imgMatch = imageRegex.exec(text)) !== null) {
+        if (imgMatch.index > lastImgIdx) {
+          segments.push(renderTextAndLinks(text.slice(lastImgIdx, imgMatch.index)));
+        }
+        segments.push(
+          <figure key={imgMatch.index} style={{ margin: '36px 0', textAlign: 'center' }}>
+            <img
+              src={getImageUrl(imgMatch[2])}
+              alt={imgMatch[1]}
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+              style={{ maxWidth: '100%', borderRadius: '8px', border: '1px solid #dedcd6' }}
+            />
+            {imgMatch[1] && (
+              <figcaption style={{ fontSize: '13px', color: '#77736b', marginTop: '8px', fontStyle: 'italic' }}>
+                {imgMatch[1]}
+              </figcaption>
+            )}
+          </figure>
+        );
+        lastImgIdx = imgMatch.index + imgMatch[0].length;
+      }
+      if (lastImgIdx < text.length) {
+        segments.push(renderTextAndLinks(text.slice(lastImgIdx)));
+      }
+      return segments;
+    }
+
+    return renderTextAndLinks(text);
   };
 
   return (

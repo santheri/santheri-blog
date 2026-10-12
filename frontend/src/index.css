@@ -757,6 +757,51 @@ a.btn-primary:hover {
   font-weight: 400;
 }
 
+.note-card-interactive:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06) !important;
+  border-color: #d1cfc7 !important;
+}
+
+.note-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 17, 15, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+.note-modal-dialog {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 36px 34px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.2);
+  position: relative;
+  animation: slideUpModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpModal {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* ==========================================================================
    NEWSLETTER SUBSCRIPTION COMPONENT
    ========================================================================== */

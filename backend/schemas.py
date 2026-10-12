@@ -99,3 +99,50 @@ class AdminVerifyResponse(BaseModel):
     message: str
     token: Optional[str] = None
 
+class ProjectBase(BaseModel):
+    title: str = Field(..., min_length=2, max_length=255)
+    category: str = Field(..., min_length=2, max_length=100)
+    description: str = Field(..., min_length=5)
+    tags: Optional[str] = None
+    github_url: Optional[str] = None
+    live_url: Optional[str] = None
+    number: Optional[str] = None
+
+class ProjectCreate(ProjectBase):
+    pass
+
+class ProjectUpdate(BaseModel):
+    title: Optional[str] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[str] = None
+    github_url: Optional[str] = None
+    live_url: Optional[str] = None
+    number: Optional[str] = None
+
+class ProjectResponse(ProjectBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class AboutProfileBase(BaseModel):
+    headline: str = Field(..., min_length=2, max_length=255)
+    bio: str = Field(..., min_length=10)
+    avatar_image: Optional[str] = None
+
+class AboutProfileUpdate(BaseModel):
+    headline: Optional[str] = None
+    bio: Optional[str] = None
+    avatar_image: Optional[str] = None
+
+class AboutProfileResponse(AboutProfileBase):
+    id: int
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
