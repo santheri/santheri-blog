@@ -1,12 +1,93 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import mermaid from 'mermaid';
 import { getImageUrl } from '../api';
+
+// Initialize Mermaid once
+try {
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'neutral',
+    securityLevel: 'loose',
+    fontFamily: 'Inter, -apple-system, sans-serif'
+  });
+} catch (e) {
+  console.warn('Failed to initialize mermaid:', e);
+}
+
+function MermaidDiagram({ chart }) {
+  const [svg, setSvg] = useState('');
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function renderChart() {
+      try {
+        const id = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
+        const { svg: renderedSvg } = await mermaid.render(id, chart.trim());
+        if (isMounted) {
+          setSvg(renderedSvg);
+          setError(null);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err.message || 'Diagram syntax error');
+        }
+      }
+    }
+    if (chart && chart.trim()) {
+      renderChart();
+    }
+    return () => { isMounted = false; };
+  }, [chart]);
+
+  if (error) {
+    return (
+      <div style={{ margin: '24px 0', padding: '16px', background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '6px', fontSize: '13px', color: '#991b1b' }}>
+        <strong>Mermaid syntax error:</strong> {error}
+        <pre style={{ marginTop: '8px', fontSize: '12px', overflowX: 'auto' }}><code>{chart}</code></pre>
+      </div>
+    );
+  }
+
+  if (!svg) {
+    return (
+      <div style={{ margin: '24px 0', padding: '24px', textAlign: 'center', color: '#77736b', background: 'var(--bg-subtle)', borderRadius: '8px', fontSize: '14px' }}>
+        Rendering diagram...
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="mermaid-wrapper"
+      style={{
+        margin: '32px 0',
+        padding: '24px 16px',
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-light)',
+        borderRadius: '8px',
+        overflowX: 'auto',
+        display: 'flex',
+        justifyContent: 'center',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.02)'
+      }}
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  );
+}
 
 export default function MarkdownRenderer({ content, className = '' }) {
   if (!content) return null;
 
-  // Normalize content: ensure images ![alt](url) on their own lines are treated as separate blocks
-  const normalizedContent = content.replace(/(^|\n)(!\[[^\]]*\]\([^)]+\))(\n|$)/g, '$1\n\n$2\n\n$3');
-  const blocks = normalizedContent.split(/\n\s*\n/).filter(b => b.trim().length > 0);
+  // Pre-normalize content:
+  // 1. Separate images ![alt](url) onto isolated blocks
+  let normalized = content.replace(/(^|\n)(!\[[^\]]*\]\([^)]+\))(\n|$)/g, '$1\n\n$2\n\n$3');
+  // 2. Separate headings (# Title, ## Title, etc.) from adjacent lines
+  normalized = normalized.replace(/(^|\n)(#{1,6}\s+[^\n]+)(\n|$)/g, '$1\n\n$2\n\n$3');
+  // 3. Separate lists from preceding non-list lines
+  normalized = normalized.replace(/([^\n])\n([-*]|\d+\.)\s+/g, '$1\n\n$2 ');
+
+  const blocks = normalized.split(/\n\s*\n/).filter(b => b.trim().length > 0);
 
   const renderItalics = (text, keyPrefix = 'it') => {
     if (!text) return null;
@@ -146,41 +227,80 @@ export default function MarkdownRenderer({ content, className = '' }) {
           );
         }
 
-        // Heading 1: # Title (mapped to h2 in body for SEO semantic hierarchy)
+        // Code block: ```lang ... ``` or ```mermaid ... ```
+        if (trimmed.startsWith('```')) {
+          const lines = trimmed.split('\n');
+          const firstLine = lines[0].trim().toLowerCase();
+          const isMermaid = firstLine === '```mermaid';
+          const codeContent = lines.slice(1, lines[lines.length - 1].startsWith('```') ? -1 : undefined).join('\n');
+
+          if (isMermaid) {
+            return <MermaidDiagram key={index} chart={codeContent} />;
+          }
+
+          return (
+            <pre key={index}>
+              <code>{codeContent}</code>
+            </pre>
+          );
+        }
+
+        // Heading 1: # Title
         if (trimmed.startsWith('# ')) {
-          return <h2 key={index}>{renderInline(trimmed.replace(/^#\s+/, ''))}</h2>;
+          const lines = trimmed.split('\n');
+          const headingText = lines[0].replace(/^#\s+/, '');
+          const restText = lines.slice(1).join('\n').trim();
+          return (
+            <React.Fragment key={index}>
+              <h2>{renderInline(headingText)}</h2>
+              {restText && <p>{renderInline(restText)}</p>}
+            </React.Fragment>
+          );
         }
 
         // Heading 2: ## Title
         if (trimmed.startsWith('## ')) {
-          return <h2 key={index}>{renderInline(trimmed.replace(/^##\s+/, ''))}</h2>;
+          const lines = trimmed.split('\n');
+          const headingText = lines[0].replace(/^##\s+/, '');
+          const restText = lines.slice(1).join('\n').trim();
+          return (
+            <React.Fragment key={index}>
+              <h2>{renderInline(headingText)}</h2>
+              {restText && <p>{renderInline(restText)}</p>}
+            </React.Fragment>
+          );
         }
 
         // Heading 3: ### Title
         if (trimmed.startsWith('### ')) {
-          return <h3 key={index}>{renderInline(trimmed.replace(/^###\s+/, ''))}</h3>;
+          const lines = trimmed.split('\n');
+          const headingText = lines[0].replace(/^###\s+/, '');
+          const restText = lines.slice(1).join('\n').trim();
+          return (
+            <React.Fragment key={index}>
+              <h3>{renderInline(headingText)}</h3>
+              {restText && <p>{renderInline(restText)}</p>}
+            </React.Fragment>
+          );
         }
 
         // Heading 4: #### Title
         if (trimmed.startsWith('#### ')) {
-          return <h4 key={index}>{renderInline(trimmed.replace(/^####\s+/, ''))}</h4>;
+          const lines = trimmed.split('\n');
+          const headingText = lines[0].replace(/^####\s+/, '');
+          const restText = lines.slice(1).join('\n').trim();
+          return (
+            <React.Fragment key={index}>
+              <h4>{renderInline(headingText)}</h4>
+              {restText && <p>{renderInline(restText)}</p>}
+            </React.Fragment>
+          );
         }
 
         // Blockquote: > Quote
         if (trimmed.startsWith('> ')) {
           const quoteLines = trimmed.split('\n').map(l => l.replace(/^>\s*/, '')).join(' ');
           return <blockquote key={index}>{renderInline(quoteLines)}</blockquote>;
-        }
-
-        // Code block: ```lang ... ```
-        if (trimmed.startsWith('```')) {
-          const lines = trimmed.split('\n');
-          const codeContent = lines.slice(1, lines[lines.length - 1].startsWith('```') ? -1 : undefined).join('\n');
-          return (
-            <pre key={index}>
-              <code>{codeContent}</code>
-            </pre>
-          );
         }
 
         // Ordered list: 1. item

@@ -763,6 +763,31 @@ a.btn-primary:hover {
   border-color: #d1cfc7 !important;
 }
 
+.notes-feed-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 22px;
+}
+
+.mermaid-wrapper {
+  margin: 32px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow-x: auto;
+  padding: 24px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+}
+
+.mermaid-wrapper svg {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block;
+}
+
 .note-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -1654,6 +1679,31 @@ a.btn-primary:hover {
 
   .notebook-card {
     padding: 35px 20px;
+  }
+
+  /* Prevent iOS WebKit/Safari automatic viewport zoom on input focus */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  .notes-feed-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .note-grid-item {
+    padding: 20px 18px !important;
+  }
+
+  .hide-on-mobile {
+    display: none !important;
+  }
+
+  .mermaid-wrapper {
+    padding: 14px;
+    margin: 20px 0;
   }
 
   .footer-row {

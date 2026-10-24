@@ -58,8 +58,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static uploads
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+# Serve uploads from local disk or Neon PostgreSQL database fallback
+@app.get("/uploads/{filename}", summary="Serve uploaded file with Neon DB fallback")
+def get_uploaded_static_file(filename: str, db: Session = Depends(get_db)):
+    local_path = os.path.join(UPLOAD_DIR, filename)
+    mime_types = {
+        ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
+        ".webp": "image/webp", ".gif": "image/gif", ".svg": "image/svg+xml", ".avif": "image/avif"
+    }
+    _, ext = os.path.splitext(filename)
+    media_type = mime_types.get(ext.lower(), "image/jpeg")
+
+    # 1. Check local uploads dir
+    if os.path.exists(local_path):
+        with open(local_path, "rb") as f:
+            return Response(
+                content=f.read(),
+                media_type=media_type,
+                headers={"Cache-Control": "public, max-age=31536000, immutable", "Access-Control-Allow-Origin": "*"}
+            )
+
+    # 2. Fallback to Neon database
+    db_img = db.query(models.UploadedImage).filter(models.UploadedImage.filename == filename).first()
+    if db_img:
+        data_bytes = bytes(db_img.data) if isinstance(db_img.data, memoryview) else db_img.data
+        return Response(
+            content=data_bytes,
+            media_type=db_img.content_type,
+            headers={"Cache-Control": "public, max-age=31536000, immutable", "Access-Control-Allow-Origin": "*"}
+        )
+
+    raise HTTPException(status_code=404, detail="Image not found")
+
 
 def estimate_reading_time(content: str) -> str:
     word_count = len(re.findall(r'\w+', content or ''))
@@ -432,9 +462,11 @@ async def upload_file(
     }
     content_type = file.content_type or mime_types.get(ext.lower(), "image/jpeg")
 
+    unique_filename = f"{uuid.uuid4().hex[:12]}{ext.lower()}"
+
     # Store permanently in Neon PostgreSQL database
     db_image = models.UploadedImage(
-        filename=filename,
+        filename=unique_filename,
         content_type=content_type,
         data=content_bytes
     )
@@ -444,7 +476,6 @@ async def upload_file(
 
     # Also keep a local cache in UPLOAD_DIR
     try:
-        unique_filename = f"{uuid.uuid4().hex[:12]}{ext.lower()}"
         destination_path = os.path.join(UPLOAD_DIR, unique_filename)
         with open(destination_path, "wb") as buffer:
             buffer.write(content_bytes)
@@ -460,8 +491,9 @@ def get_image(image_id: int, db: Session = Depends(get_db)):
     img = db.query(models.UploadedImage).filter(models.UploadedImage.id == image_id).first()
     if not img:
         raise HTTPException(status_code=404, detail="Image not found")
+    data_bytes = bytes(img.data) if isinstance(img.data, memoryview) else img.data
     return Response(
-        content=img.data,
+        content=data_bytes,
         media_type=img.content_type,
         headers={
             "Cache-Control": "public, max-age=31536000, immutable",

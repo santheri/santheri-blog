@@ -103,7 +103,7 @@ export default function WritingPage() {
       </div>
 
       {/* Posts Listing */}
-      <section className="feed-section" style={{ paddingTop: '20px' }}>
+      <section className="feed-section" style={{ paddingTop: '10px', borderTop: 'none' }}>
         {loading ? (
           <div style={{ padding: '60px 0', textAlign: 'center', color: '#77736b' }}>
             Loading writing collection...
@@ -121,11 +121,6 @@ export default function WritingPage() {
                     <span className={`post-category-tag ${getCategoryClass(post.category)}`}>
                       {post.category}
                     </span>
-                    {post.font_style && (
-                      <span className="post-font-badge">
-                        {post.font_style} font
-                      </span>
-                    )}
                   </div>
 
                   <h2 className={`post-item-title font-${post.font_style || 'serif'}`}>

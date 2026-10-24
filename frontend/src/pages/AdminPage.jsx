@@ -56,7 +56,8 @@ import {
   LogOut,
   BookOpen,
   Briefcase,
-  User
+  User,
+  GitFork
 } from 'lucide-react';
 
 const CATEGORIES = ['Travel', 'Technology', 'Life'];
@@ -631,6 +632,19 @@ export default function AdminPage() {
       setContent(prev => prev + snippet);
     }
     showToast('Picture inserted into markdown content!');
+  };
+
+  const insertMermaidDiagram = () => {
+    const snippet = `\n\n\`\`\`mermaid\ngraph TD\n  A[Start Concept] --> B{Key Decision?}\n  B -- Yes --> C[Implementation Step]\n  B -- No --> D[Refine & Re-evaluate]\n  C --> E[Final Result]\n\`\`\`\n\n`;
+    if (textareaRef.current) {
+      const start = textareaRef.current.selectionStart || content.length;
+      const end = textareaRef.current.selectionEnd || content.length;
+      const newContent = content.slice(0, start) + snippet + content.slice(end);
+      setContent(newContent);
+    } else {
+      setContent(prev => prev + snippet);
+    }
+    showToast('Mermaid flowchart template inserted!');
   };
 
   const insertFormat = (before, after = '') => {
@@ -1282,6 +1296,10 @@ export default function AdminPage() {
                     </button>
                     <button type="button" onClick={() => insertFormat('- ')} className="btn-secondary" style={{ padding: '2px 8px' }} title="List">
                       <List size={16} />
+                    </button>
+                    <button type="button" onClick={insertMermaidDiagram} className="btn-secondary" style={{ padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }} title="Insert Mermaid Flowchart / Diagram">
+                      <GitFork size={16} />
+                      <span style={{ fontSize: '11px', fontWeight: '600' }}>Diagram</span>
                     </button>
                   </div>
                 </div>

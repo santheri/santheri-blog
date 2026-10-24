@@ -83,11 +83,6 @@ export default function HomePage() {
                     <span className={`post-category-tag ${getCategoryClass(post.category)}`}>
                       {post.category}
                     </span>
-                    {post.font_style && (
-                      <span className="post-font-badge">
-                        {post.font_style} font
-                      </span>
-                    )}
                   </div>
 
                   <h3 className={`post-item-title font-${post.font_style || 'serif'}`}>

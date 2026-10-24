@@ -338,8 +338,8 @@ export default function ProjectsPage() {
             aria-labelledby="project-modal-title"
           >
             {/* Top Bar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', flex: 1, paddingRight: '12px' }}>
                 {selectedProject.number && (
                   <span style={{ fontSize: '14px', fontWeight: '700', color: '#99948c', letterSpacing: '0.05em' }}>
                     {selectedProject.number}
@@ -359,12 +359,13 @@ export default function ProjectsPage() {
                   border: 'none',
                   color: 'var(--text-main)',
                   cursor: 'pointer',
-                  padding: '6px',
+                  padding: '8px',
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  transition: 'background 0.15s ease'
+                  transition: 'background 0.15s ease',
+                  flexShrink: 0
                 }}
                 aria-label="Close project brief"
                 id="btn-close-project-modal"

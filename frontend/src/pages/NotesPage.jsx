@@ -140,7 +140,7 @@ export default function NotesPage() {
                 border: 'none',
                 background: 'transparent',
                 outline: 'none',
-                fontSize: '14px',
+                fontSize: '16px',
                 width: '100%',
                 color: 'var(--text-main)'
               }}
@@ -163,18 +163,14 @@ export default function NotesPage() {
             No notes found matching "{searchQuery}".
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
-            gap: '24px'
-          }}>
+          <div className="notes-feed-grid">
             {filteredNotes.map((note) => (
               <article
                 key={note.id}
                 onClick={() => setSelectedNote(note)}
                 style={{
                   background: 'var(--bg-surface)',
-                  padding: '28px 26px',
+                  padding: '26px 24px',
                   borderRadius: '8px',
                   border: '1px solid var(--border-light)',
                   borderLeft: '4px solid var(--text-main)',
@@ -185,7 +181,7 @@ export default function NotesPage() {
                   transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
                   cursor: 'pointer'
                 }}
-                className="notebook-card note-card-interactive"
+                className="notebook-card note-card-interactive note-grid-item"
                 id={`note-card-${note.id}`}
                 role="button"
                 tabIndex={0}
@@ -200,24 +196,27 @@ export default function NotesPage() {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                     <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.12em', color: '#77736b', textTransform: 'uppercase' }}>
-                      {formatDate(note.created_at || note.date)}
+                      {formatDate(note.created_at || note.date)} · FIELD NOTE
                     </span>
                     <button
                       type="button"
                       onClick={(e) => handleCopyNote(note, e)}
                       style={{
-                        background: 'none',
-                        border: 'none',
-                        color: copiedId === note.id ? '#047857' : '#77736b',
+                        background: copiedId === note.id ? '#ecfdf5' : 'transparent',
+                        border: copiedId === note.id ? '1px solid #a7f3d0' : '1px solid transparent',
+                        color: copiedId === note.id ? '#059669' : '#77736b',
                         cursor: 'pointer',
-                        display: 'flex',
+                        display: 'inline-flex',
                         alignItems: 'center',
                         gap: '4px',
                         fontSize: '11px',
-                        padding: '3px 6px',
-                        borderRadius: '4px'
+                        fontWeight: '500',
+                        padding: '3px 8px',
+                        borderRadius: '4px',
+                        transition: 'all 0.15s ease'
                       }}
                       title="Copy quote"
+                      aria-label="Copy note to clipboard"
                     >
                       {copiedId === note.id ? (
                         <>
@@ -250,8 +249,8 @@ export default function NotesPage() {
                 </div>
 
                 <div style={{ marginTop: '20px', paddingTop: '12px', borderTop: '1px solid rgba(0,0,0,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '500' }}>
-                    <Maximize2 size={12} /> Read note
+                  <span style={{ fontSize: '12px', color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: '500' }}>
+                    <Maximize2 size={12} /> Open note
                   </span>
                   <BookOpen size={13} style={{ color: '#99948c' }} />
                 </div>
@@ -275,75 +274,48 @@ export default function NotesPage() {
             aria-modal="true"
             aria-labelledby="note-modal-title"
           >
-            {/* Top Bar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '12px', fontWeight: '700', letterSpacing: '0.12em', color: '#77736b', textTransform: 'uppercase' }}>
-                  {formatDate(selectedNote.created_at || selectedNote.date)}
+            {/* Top Bar: Clean typography on left, isolated close button on right */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', marginBottom: '20px' }}>
+              <div>
+                <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.12em', color: '#77736b', textTransform: 'uppercase', display: 'block' }}>
+                  {formatDate(selectedNote.created_at || selectedNote.date)} · FIELD NOTE
                 </span>
-                <span className="post-font-badge">FIELD NOTE</span>
+                <span style={{ fontSize: '12px', color: '#88847c', fontStyle: 'italic', fontFamily: 'var(--font-serif)', display: 'inline-block', marginTop: '2px' }}>
+                  Santheri Bhat's Notebook
+                </span>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <button
-                  type="button"
-                  onClick={(e) => handleCopyNote(selectedNote, e)}
-                  style={{
-                    background: 'var(--bg-subtle)',
-                    border: '1px solid var(--border-light)',
-                    color: copiedId === selectedNote.id ? '#047857' : 'var(--text-main)',
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: '12px',
-                    padding: '6px 12px',
-                    borderRadius: '20px',
-                    fontWeight: '500'
-                  }}
-                  title="Copy quote"
-                >
-                  {copiedId === selectedNote.id ? (
-                    <>
-                      <Check size={13} /> <span>Copied quote!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={13} /> <span>Copy quote</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedNote(null)}
-                  style={{
-                    background: 'var(--bg-subtle)',
-                    border: 'none',
-                    color: 'var(--text-main)',
-                    cursor: 'pointer',
-                    padding: '6px',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'background 0.15s ease'
-                  }}
-                  aria-label="Close note popup"
-                  id="btn-close-note-modal"
-                >
-                  <X size={18} />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedNote(null)}
+                style={{
+                  background: 'var(--bg-subtle)',
+                  border: 'none',
+                  color: 'var(--text-main)',
+                  cursor: 'pointer',
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  transition: 'background 0.15s ease'
+                }}
+                aria-label="Close note popup"
+                id="btn-close-note-modal"
+              >
+                <X size={18} />
+              </button>
             </div>
 
             {/* Note Content */}
             <h2 id="note-modal-title" style={{
               fontFamily: 'var(--font-serif)',
-              fontSize: 'clamp(24px, 4vw, 32px)',
+              fontSize: 'clamp(22px, 3.5vw, 30px)',
               fontWeight: '500',
-              lineHeight: '1.25',
-              marginBottom: '24px',
+              lineHeight: '1.3',
+              marginBottom: '20px',
               color: 'var(--text-main)'
             }}>
               {selectedNote.title}
@@ -351,36 +323,70 @@ export default function NotesPage() {
 
             <div style={{
               fontFamily: 'var(--font-serif)',
-              fontSize: 'clamp(18px, 2.5vw, 21px)',
+              fontSize: 'clamp(17px, 2.2vw, 20px)',
               lineHeight: '1.75',
               color: '#2d2b27',
               whiteSpace: 'pre-wrap',
-              marginBottom: '36px',
+              marginBottom: '32px',
               paddingLeft: '18px',
               borderLeft: '3px solid var(--text-main)'
             }}>
               {selectedNote.thought}
             </div>
 
-            {/* Footer */}
+            {/* Footer Actions: Cohesive Copy Note and Close actions */}
             <div style={{
               paddingTop: '20px',
               borderTop: '1px solid var(--border-light)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              fontSize: '13px',
-              color: '#77736b'
+              flexWrap: 'wrap',
+              gap: '12px'
             }}>
-              <span>Press <kbd style={{ background: 'var(--bg-subtle)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-medium)', fontSize: '11px' }}>ESC</kbd> or click outside to dismiss</span>
               <button
                 type="button"
-                onClick={() => setSelectedNote(null)}
-                className="btn-primary"
-                style={{ padding: '8px 20px', fontSize: '13px' }}
+                onClick={(e) => handleCopyNote(selectedNote, e)}
+                style={{
+                  background: copiedId === selectedNote.id ? '#ecfdf5' : 'var(--bg-subtle)',
+                  border: copiedId === selectedNote.id ? '1px solid #a7f3d0' : '1px solid var(--border-light)',
+                  color: copiedId === selectedNote.id ? '#059669' : 'var(--text-main)',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '12px',
+                  padding: '7px 14px',
+                  borderRadius: '6px',
+                  fontWeight: '500',
+                  transition: 'all 0.15s ease'
+                }}
+                title="Copy quote"
               >
-                Close
+                {copiedId === selectedNote.id ? (
+                  <>
+                    <Check size={14} /> <span>Copied to clipboard!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={14} /> <span>Copy note quote</span>
+                  </>
+                )}
               </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span className="hide-on-mobile" style={{ fontSize: '12px', color: '#88847c' }}>
+                  Press <kbd style={{ background: 'var(--bg-subtle)', padding: '2px 5px', borderRadius: '3px', border: '1px solid var(--border-medium)', fontSize: '11px' }}>ESC</kbd>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedNote(null)}
+                  className="btn-primary"
+                  style={{ padding: '7px 20px', fontSize: '13px' }}
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
